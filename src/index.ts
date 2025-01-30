@@ -24,17 +24,19 @@ async function initializeDatabase() {
     await db.sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
-    // Run migrations if enabled
+    // First, create tables
+    console.log('Creating tables...');
+    await db.sequelize.sync({ force: false });
+    console.log('Tables created successfully');
+    
+    // Then run migrations if enabled
     if (process.env.RUN_MIGRATIONS === 'true') {
       console.log('Running migrations...');
       await colorBrandMigration.up(db.sequelize.getQueryInterface());
       console.log('Migrations completed successfully');
     }
     
-    // Run database sync
-    await db.sequelize.sync();
-    
-    // Check if we should seed the database
+    // Finally seed if enabled
     if (process.env.SEED_DATABASE === 'true') {
       console.log('Seeding database...');
       await seedProducts();
