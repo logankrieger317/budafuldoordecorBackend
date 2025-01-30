@@ -5,23 +5,17 @@ const db = Database.getInstance();
 
 const productTemplate: ProductCreationAttributes[] = [
   {
-    sku: 'FD-001',          // Your custom SKU format
-    name: 'Product Name 1',
-    price: 299.99,
-    category: 'Front Door',  // Categories: Front Door, Screen Door, Storm Door, etc.
-    width: 36,              // in inches
-    length: 80,             // in inches
-    isWired: false,
-    quantity: 10,
-    description: 'Product description here',
-    imageUrl: 'https://example.com/image1.jpg'  // Optional
-  },
-  // Add more products with unique SKUs
-  // {
-  //   sku: 'FD-002',
-  //   name: 'Product Name 2',
-  //   ...
-  // }
+    sku: 'LMK-020V56',
+    name: 'silver lattice',
+    price: 10.00,
+    category: 'Ribbon',  
+    width: 2.5,         
+    length: 10,         
+    isWired: true,      
+    quantity: 0,        
+    description: 'silver wired ribbon with lattice pattern and metallic trim/edge',
+    imageUrl: "null",                
+  }
 ];
 
 export async function seedProducts() {
