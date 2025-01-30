@@ -27,21 +27,21 @@ export const orderController = {
       // Calculate total amount and verify product availability
       let totalAmount = 0;
       for (const item of items) {
-        const product = await db.Product.findByPk(item.productSku, { transaction });
+        const product = await db.Product.findByPk(String(item.productSku), { transaction });
         
         if (!product) {
           throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
         }
 
-        if (product.quantity < item.quantity) {
+        if (product.quantity < Number(item.quantity)) {
           throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
         }
 
-        totalAmount += Number(product.price) * item.quantity;
+        totalAmount += Number(product.price) * Number(item.quantity);
 
         // Update product quantity
         await product.update(
-          { quantity: product.quantity - item.quantity },
+          { quantity: product.quantity - Number(item.quantity) },
           { transaction }
         );
       }
@@ -65,10 +65,10 @@ export const orderController = {
         items.map(item =>
           db.OrderItem.create(
             {
-              orderId: order.id,
-              productSku: item.productSku,
-              quantity: item.quantity,
-              priceAtTime: item.price
+              orderId: String(order.id),
+              productSku: String(item.productSku),
+              quantity: Number(item.quantity),
+              priceAtTime: Number(item.price)
             },
             { transaction }
           )
@@ -94,13 +94,13 @@ export const orderController = {
 
   async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(req.params.orderId, {
+      const order = await db.Order.findByPk(String(req.params.orderId), {
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
             model: db.Product,
-            attributes: ['name', 'imageUrl']
+            as: 'product'
           }]
         }]
       });
@@ -121,16 +121,15 @@ export const orderController = {
   async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const orders = await db.Order.findAll({
-        where: { customerEmail: req.params.email },
+        where: { customerEmail: req.params.customerEmail },
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
             model: db.Product,
-            attributes: ['name', 'imageUrl']
+            as: 'product'
           }]
-        }],
-        order: [['createdAt', 'DESC']]
+        }]
       });
 
       res.json({
@@ -144,14 +143,13 @@ export const orderController = {
 
   async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status } = req.body;
-      const order = await db.Order.findByPk(req.params.orderId);
+      const order = await db.Order.findByPk(String(req.params.orderId));
 
       if (!order) {
         return next(new AppError('Order not found', 404));
       }
 
-      await order.update({ status });
+      await order.update({ status: req.body.status });
 
       res.json({
         status: 'success',
