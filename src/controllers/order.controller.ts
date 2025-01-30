@@ -16,7 +16,7 @@ export const orderController = {
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return next(new AppError('Order must contain at least one item', 400));
+      return next(new AppError(400, 'Order must contain at least one item'));
     }
 
     let transaction: Transaction | undefined;
@@ -27,21 +27,21 @@ export const orderController = {
       // Calculate total amount and verify product availability
       let totalAmount = 0;
       for (const item of items) {
-        const product = await db.Product.findByPk(item.productSku, { transaction });
+        const product = await db.Product.findByPk(String(item.productSku), { transaction });
         
         if (!product) {
-          throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
+          throw new AppError(404, `Product with SKU ${item.productSku} not found`);
         }
 
-        if (product.quantity < item.quantity) {
-          throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
+        if (product.quantity < Number(item.quantity)) {
+          throw new AppError(400, `Insufficient quantity for product ${product.name}`);
         }
 
-        totalAmount += Number(product.price) * item.quantity;
+        totalAmount += Number(product.price) * Number(item.quantity);
 
         // Update product quantity
         await product.update(
-          { quantity: product.quantity - item.quantity },
+          { quantity: product.quantity - Number(item.quantity) },
           { transaction }
         );
       }
@@ -66,9 +66,9 @@ export const orderController = {
           db.OrderItem.create(
             {
               orderId: order.id,
-              productSku: item.productSku,
-              quantity: item.quantity,
-              priceAtTime: item.price
+              productSku: String(item.productSku),
+              quantity: Number(item.quantity),
+              priceAtTime: Number(item.price)
             },
             { transaction }
           )
@@ -94,19 +94,19 @@ export const orderController = {
 
   async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(req.params.orderId, {
+      const order = await db.Order.findByPk(String(req.params.orderId), {
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
             model: db.Product,
-            attributes: ['name', 'imageUrl']
+            as: 'product'
           }]
         }]
       });
 
       if (!order) {
-        return next(new AppError('Order not found', 404));
+        return next(new AppError(404, 'Order not found'));
       }
 
       res.json({
@@ -121,16 +121,15 @@ export const orderController = {
   async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const orders = await db.Order.findAll({
-        where: { customerEmail: req.params.email },
+        where: { customerEmail: req.params.customerEmail },
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
             model: db.Product,
-            attributes: ['name', 'imageUrl']
+            as: 'product'
           }]
-        }],
-        order: [['createdAt', 'DESC']]
+        }]
       });
 
       res.json({
@@ -144,14 +143,13 @@ export const orderController = {
 
   async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status } = req.body;
-      const order = await db.Order.findByPk(req.params.orderId);
+      const order = await db.Order.findByPk(String(req.params.orderId));
 
       if (!order) {
-        return next(new AppError('Order not found', 404));
+        return next(new AppError(404, 'Order not found'));
       }
 
-      await order.update({ status });
+      await order.update({ status: req.body.status });
 
       res.json({
         status: 'success',
