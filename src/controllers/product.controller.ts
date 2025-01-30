@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Database } from '../models';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { NotFoundError, ValidationError } from '../types/errors';
+import { AppError } from '../types/errors';
 import { ProductCreationAttributes } from '../types/models';
 
 const db = Database.getInstance();
@@ -19,7 +19,7 @@ export const productController = {
     const product = await db.Product.findByPk(sku);
     
     if (!product) {
-      throw new NotFoundError(`Product with SKU ${sku} not found`);
+      throw new AppError(`Product with SKU ${sku} not found`, 404);
     }
     
     res.json(product);
@@ -33,7 +33,7 @@ export const productController = {
     const requiredFields = ['name', 'price', 'category', 'width', 'length', 'isWired'];
     for (const field of requiredFields) {
       if (!(field in productData)) {
-        throw new ValidationError(`Missing required field: ${field}`);
+        throw new AppError(`Missing required field: ${field}`, 400);
       }
     }
 
@@ -46,23 +46,22 @@ export const productController = {
     res.status(201).json(product);
   }),
 
-  // Update product quantity
+  // Update quantity
   updateQuantity: asyncHandler(async (req: Request, res: Response) => {
     const { sku } = req.params;
     const { quantity } = req.body;
 
     if (typeof quantity !== 'number' || quantity < 0) {
-      throw new ValidationError('Invalid quantity value');
+      throw new AppError('Invalid quantity value', 400);
     }
 
     const product = await db.Product.findByPk(sku);
     if (!product) {
-      throw new NotFoundError(`Product with SKU ${sku} not found`);
+      throw new AppError(`Product with SKU ${sku} not found`, 404);
     }
 
     product.quantity = quantity;
     await product.save();
-
     res.json(product);
   }),
 
@@ -72,7 +71,7 @@ export const productController = {
     
     const product = await db.Product.findByPk(sku);
     if (!product) {
-      throw new NotFoundError(`Product with SKU ${sku} not found`);
+      throw new AppError(`Product with SKU ${sku} not found`, 404);
     }
 
     await product.destroy();
@@ -82,14 +81,14 @@ export const productController = {
 
 // Helper function to generate unique SKU
 async function generateUniqueSku(name: string): Promise<string> {
-  const base = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 3)
-    .toUpperCase();
-    
-  const timestamp = Date.now().toString().slice(-4);
-  const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  const baseSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
+  let sku = baseSlug;
+  let counter = 1;
   
-  return `${base}-${timestamp}-${randomNum}`;
+  while (await db.Product.findByPk(sku)) {
+    sku = `${baseSlug}${counter}`;
+    counter++;
+  }
+  
+  return sku;
 }

@@ -16,7 +16,7 @@ export const orderController = {
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return next(new AppError(400, 'Order must contain at least one item'));
+      return next(new AppError('Order must contain at least one item', 400));
     }
 
     let transaction: Transaction | undefined;
@@ -28,13 +28,13 @@ export const orderController = {
       let totalAmount = 0;
       for (const item of items) {
         const product = await db.Product.findByPk(String(item.productSku), { transaction });
-        
+
         if (!product) {
-          throw new AppError(404, `Product with SKU ${item.productSku} not found`);
+          throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
         }
 
         if (product.quantity < Number(item.quantity)) {
-          throw new AppError(400, `Insufficient quantity for product ${product.name}`);
+          throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
         }
 
         totalAmount += Number(product.price) * Number(item.quantity);
@@ -106,7 +106,7 @@ export const orderController = {
       });
 
       if (!order) {
-        return next(new AppError(404, 'Order not found'));
+        return next(new AppError('Order not found', 404));
       }
 
       res.json({
@@ -146,7 +146,7 @@ export const orderController = {
       const order = await db.Order.findByPk(String(req.params.orderId));
 
       if (!order) {
-        return next(new AppError(404, 'Order not found'));
+        return next(new AppError('Order not found', 404));
       }
 
       await order.update({ status: req.body.status });
