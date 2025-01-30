@@ -27,7 +27,7 @@ export const orderController = {
       // Calculate total amount and verify product availability
       let totalAmount = 0;
       for (const item of items) {
-        const product = await db.Product.findByPk(Number(item.productSku), { transaction });
+        const product = await db.Product.findByPk(String(item.productSku), { transaction });
         
         if (!product) {
           throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
@@ -66,7 +66,7 @@ export const orderController = {
           db.OrderItem.create(
             {
               orderId: order.id,
-              productSku: Number(item.productSku),
+              productSku: String(item.productSku),
               quantity: Number(item.quantity),
               priceAtTime: Number(item.price)
             },
@@ -94,7 +94,7 @@ export const orderController = {
 
   async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(Number(req.params.orderId), {
+      const order = await db.Order.findByPk(String(req.params.orderId), {
         include: [{
           model: db.OrderItem,
           as: 'items',
@@ -143,7 +143,7 @@ export const orderController = {
 
   async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(Number(req.params.orderId));
+      const order = await db.Order.findByPk(String(req.params.orderId));
 
       if (!order) {
         return next(new AppError('Order not found', 404));
