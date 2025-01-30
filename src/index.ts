@@ -13,6 +13,18 @@ config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Initialize database
+const db = Database.getInstance();
+
+// Test database connection
+db.sequelize.authenticate()
+  .then(() => {
+    console.log('Database connection has been established successfully.');
+  })
+  .catch((error) => {
+    console.error('Unable to connect to the database:', error);
+  });
+
 // Middleware
 app.use(cors());
 app.use(helmet());
@@ -31,7 +43,6 @@ app.get('/health', (req, res) => {
 app.use(errorHandler);
 
 // Initialize database and start server
-const db = Database.getInstance();
 db.connect()
   .then(() => {
     app.listen(port, () => {

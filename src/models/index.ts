@@ -15,47 +15,61 @@ export class Database {
   public OrderItem: typeof OrderItem;
 
   private constructor() {
-    if (env === 'production') {
-      const prodConfig = config as typeof dbConfig.production;
-      const dbUrl = process.env[prodConfig.use_env_variable];
-      if (!dbUrl) {
-        throw new Error('DATABASE_URL environment variable is not set');
+    try {
+      console.log('Initializing database with NODE_ENV:', env);
+      
+      if (env === 'production') {
+        const prodConfig = config as typeof dbConfig.production;
+        const dbUrl = process.env[prodConfig.use_env_variable];
+        console.log('Database URL variable name:', prodConfig.use_env_variable);
+        console.log('Database URL exists:', !!dbUrl);
+        
+        if (!dbUrl) {
+          throw new Error('DATABASE_URL environment variable is not set');
+        }
+        
+        console.log('Attempting to connect to database...');
+        this.sequelize = new Sequelize(dbUrl, {
+          dialect: 'postgres',
+          dialectOptions: prodConfig.dialectOptions,
+          logging: console.log
+        });
+      } else {
+        const devConfig = config as typeof dbConfig.development;
+        this.sequelize = new Sequelize(devConfig.database, devConfig.username, devConfig.password, {
+          host: devConfig.host,
+          dialect: devConfig.dialect,
+          logging: process.env.NODE_ENV !== 'production'
+        });
       }
-      this.sequelize = new Sequelize(dbUrl, {
-        dialect: 'postgres',
-        dialectOptions: prodConfig.dialectOptions,
-        logging: false
+
+      console.log('Initializing models...');
+      // Initialize models
+      this.Product = Product.initModel(this.sequelize);
+      this.Order = Order.initModel(this.sequelize);
+      this.OrderItem = OrderItem.initModel(this.sequelize);
+
+      console.log('Setting up associations...');
+      // Set up associations
+      this.Order.hasMany(this.OrderItem, {
+        foreignKey: 'orderId',
+        as: 'items'
       });
-    } else {
-      const devConfig = config as typeof dbConfig.development;
-      this.sequelize = new Sequelize(devConfig.database, devConfig.username, devConfig.password, {
-        host: devConfig.host,
-        dialect: devConfig.dialect,
-        logging: process.env.NODE_ENV !== 'production'
+      this.OrderItem.belongsTo(this.Order, {
+        foreignKey: 'orderId'
       });
+      this.OrderItem.belongsTo(this.Product, {
+        foreignKey: 'productSku',
+        targetKey: 'sku'
+      });
+      this.Product.hasMany(this.OrderItem, {
+        foreignKey: 'productSku',
+        sourceKey: 'sku'
+      });
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      throw error;
     }
-
-    // Initialize models
-    this.Product = Product.initModel(this.sequelize);
-    this.Order = Order.initModel(this.sequelize);
-    this.OrderItem = OrderItem.initModel(this.sequelize);
-
-    // Set up associations
-    this.Order.hasMany(this.OrderItem, {
-      foreignKey: 'orderId',
-      as: 'items'
-    });
-    this.OrderItem.belongsTo(this.Order, {
-      foreignKey: 'orderId'
-    });
-    this.OrderItem.belongsTo(this.Product, {
-      foreignKey: 'productSku',
-      targetKey: 'sku'
-    });
-    this.Product.hasMany(this.OrderItem, {
-      foreignKey: 'productSku',
-      sourceKey: 'sku'
-    });
   }
 
   public static getInstance(): Database {
