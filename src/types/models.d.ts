@@ -9,6 +9,8 @@ export interface ProductAttributes {
   length: number;
   isWired: boolean;
   quantity: number;
+  color?: string;
+  brand?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

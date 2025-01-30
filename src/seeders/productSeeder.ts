@@ -14,7 +14,9 @@ const productTemplate: ProductCreationAttributes[] = [
     isWired: true,      
     quantity: 0,        
     description: 'silver wired ribbon with lattice pattern and metallic trim/edge',
-    imageUrl: "null",                
+    imageUrl: "null",
+    brand: '',
+    color: 'silver'
   }
 ];
 

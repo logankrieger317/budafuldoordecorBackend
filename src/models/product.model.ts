@@ -12,6 +12,8 @@ export class Product extends Model<ProductAttributes, ProductCreationAttributes>
   public length!: number;
   public isWired!: boolean;
   public quantity!: number;
+  public color!: string;
+  public brand!: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -64,6 +66,14 @@ export class Product extends Model<ProductAttributes, ProductCreationAttributes>
           type: DataTypes.INTEGER,
           allowNull: false,
           defaultValue: 0,
+        },
+        color: {
+          type: DataTypes.STRING,
+          allowNull: true,
+        },
+        brand: {
+          type: DataTypes.STRING,
+          allowNull: true,
         },
       },
       {
