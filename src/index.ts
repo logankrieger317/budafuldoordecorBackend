@@ -43,13 +43,20 @@ app.get('/health', (req, res) => {
 app.use(errorHandler);
 
 // Initialize database and start server
-db.connect()
+db.sequelize.sync()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
+    db.connect()
+      .then(() => {
+        app.listen(port, () => {
+          console.log(`Server is running on port ${port}`);
+        });
+      })
+      .catch((error) => {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+      });
   })
   .catch((error) => {
-    console.error('Unable to start server:', error);
+    console.error('Failed to sync database:', error);
     process.exit(1);
   });

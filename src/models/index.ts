@@ -83,6 +83,11 @@ export class Database {
     try {
       await this.sequelize.authenticate();
       console.log('Database connection has been established successfully.');
+      
+      // Sync database tables
+      console.log('Syncing database tables...');
+      await this.sequelize.sync({ alter: true });
+      console.log('Database tables have been synchronized.');
     } catch (error) {
       console.error('Unable to connect to the database:', error);
       throw error;
