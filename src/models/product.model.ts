@@ -23,6 +23,9 @@ export class Product extends Model<ProductAttributes, ProductCreationAttributes>
           type: DataTypes.STRING,
           primaryKey: true,
           allowNull: false,
+          validate: {
+            notEmpty: true
+          }
         },
         name: {
           type: DataTypes.STRING,
