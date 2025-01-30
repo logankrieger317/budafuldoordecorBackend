@@ -24,10 +24,10 @@ async function initializeDatabase() {
     await db.sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
-    // First, create tables
-    console.log('Creating tables...');
-    await db.sequelize.sync({ force: false });
-    console.log('Tables created successfully');
+    // First, ensure the database is synced with the current models
+    console.log('Syncing database...');
+    await db.sequelize.sync({ force: false, alter: false });
+    console.log('Database sync completed');
     
     // Then run migrations if enabled
     if (process.env.RUN_MIGRATIONS === 'true') {

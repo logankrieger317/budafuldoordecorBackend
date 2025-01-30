@@ -78,6 +78,7 @@ export class Product extends Model<ProductAttributes, ProductCreationAttributes>
       },
       {
         sequelize,
+        modelName: 'Product',
         tableName: 'products',
         timestamps: true,
       }
