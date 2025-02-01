@@ -13,7 +13,9 @@ const createOrderValidation = [
   body('items').isArray({ min: 1 }).withMessage('At least one item is required'),
   body('items.*.productSku').notEmpty().withMessage('Product SKU is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('items.*.price').isFloat({ min: 0 }).withMessage('Price must be a positive number')
+  body('items.*.price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('phone').optional().matches(/^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/).withMessage('Invalid phone number format'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
 ];
 
 const updateOrderStatusValidation = [

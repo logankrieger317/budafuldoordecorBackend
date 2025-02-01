@@ -12,7 +12,9 @@ export const orderController = {
       customerName,
       shippingAddress,
       billingAddress,
-      items
+      items,
+      phone,
+      notes
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -55,7 +57,9 @@ export const orderController = {
           billingAddress,
           totalAmount,
           status: 'pending',
-          paymentStatus: 'pending'
+          paymentStatus: 'pending',
+          phone,
+          notes
         },
         { transaction }
       );

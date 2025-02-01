@@ -11,7 +11,9 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
   public totalAmount!: number;
   public status!: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   public paymentStatus!: 'pending' | 'completed' | 'failed' | 'refunded';
-  public paymentIntentId!: string;
+  public paymentIntentId?: string;
+  public phone?: string;
+  public notes?: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -63,6 +65,18 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
         paymentIntentId: {
           type: DataTypes.STRING,
           allowNull: true
+        },
+        phone: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          validate: {
+            // Accepts formats: (123) 456-7890, 123-456-7890, 1234567890
+            is: /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/
+          }
+        },
+        notes: {
+          type: DataTypes.TEXT,
+          allowNull: true
         }
       },
       {
@@ -71,7 +85,6 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
         timestamps: true
       }
     );
-
     return Order;
   }
 }
