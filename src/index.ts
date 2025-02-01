@@ -3,24 +3,21 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
 import { Database } from './models';
-import productRoutes from './routes/product.routes';
-import orderRoutes from './routes/order.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { seedProducts } from './seeders/productSeeder';
-import * as colorBrandMigration from './migrations/20250130_add_color_brand_to_products';
 
 // Load environment variables
 config();
 
 const app = express();
-const port = process.env.PORT || 3001;
-
-// Initialize database
+const port = process.env.PORT || 3000;
 const db = Database.getInstance();
 
 // Test database connection and initialize
 async function initializeDatabase() {
   try {
+    // Test the connection
+    console.log('Testing database connection...');
     await db.sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
@@ -28,13 +25,6 @@ async function initializeDatabase() {
     console.log('Syncing database...');
     await db.sequelize.sync({ force: false, alter: false });
     console.log('Database sync completed');
-    
-    // Then run migrations if enabled
-    if (process.env.RUN_MIGRATIONS === 'true') {
-      console.log('Running migrations...');
-      await colorBrandMigration.up(db.sequelize.getQueryInterface());
-      console.log('Migrations completed successfully');
-    }
     
     // Finally seed if enabled
     if (process.env.SEED_DATABASE === 'true') {
@@ -44,9 +34,12 @@ async function initializeDatabase() {
     }
   } catch (error) {
     console.error('Database initialization failed:', error);
-    throw error;
+    process.exit(1);
   }
 }
+
+// Initialize database
+initializeDatabase();
 
 // Middleware
 app.use(cors());
@@ -54,25 +47,16 @@ app.use(helmet());
 app.use(express.json());
 
 // Routes
+import productRoutes from './routes/product.routes';
+import orderRoutes from './routes/order.routes';
+
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Error handling
+// Error handling middleware
 app.use(errorHandler);
 
-// Initialize database and start server
-initializeDatabase()
-  .then(() => {
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  });
+// Start server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
