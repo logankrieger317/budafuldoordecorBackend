@@ -1,2 +1,2 @@
-web: npx sequelize-cli db:migrate --force || true && npm start
+web: npm start
 release: npx sequelize-cli db:migrate
