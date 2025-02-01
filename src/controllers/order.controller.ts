@@ -7,6 +7,8 @@ const db = Database.getInstance();
 
 export const orderController = {
   async createOrder(req: Request, res: Response, next: NextFunction) {
+    console.log('Received order data:', req.body);
+    
     const {
       customerEmail,
       customerName,
@@ -14,7 +16,8 @@ export const orderController = {
       billingAddress,
       items,
       phone,
-      notes
+      notes,
+      total
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -29,11 +32,14 @@ export const orderController = {
       // Calculate total amount and verify product availability
       let totalAmount = 0;
       for (const item of items) {
+        console.log('Processing item:', item);
         const product = await db.Product.findByPk(String(item.productSku), { transaction });
 
         if (!product) {
           throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
         }
+
+        console.log('Found product:', product.toJSON());
 
         if (product.quantity < Number(item.quantity)) {
           throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
@@ -48,6 +54,9 @@ export const orderController = {
         );
       }
 
+      console.log('Calculated totalAmount:', totalAmount);
+      console.log('Received total:', total);
+
       // Create order
       const order = await db.Order.create(
         {
@@ -55,7 +64,7 @@ export const orderController = {
           customerName,
           shippingAddress,
           billingAddress,
-          totalAmount,
+          totalAmount: Number(total), // Use the total from the request
           status: 'pending',
           paymentStatus: 'pending',
           phone,
@@ -92,7 +101,15 @@ export const orderController = {
       });
     } catch (error) {
       if (transaction) await transaction.rollback();
-      next(error);
+      console.error('Error creating order:', error);
+      if (error instanceof AppError) {
+        next(error);
+      } else if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+        next(new AppError(error.message || 'Internal server error', 500));
+      } else {
+        next(new AppError('Internal server error', 500));
+      }
     }
   },
 
