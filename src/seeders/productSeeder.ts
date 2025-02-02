@@ -514,11 +514,15 @@ const mcGinleyProducts = [
 
 export const seedProducts = async () => {
   try {
-    // Clear existing products
-    await db.Product.destroy({ where: {} });
+    console.log('Starting product seeding...');
     
-    // Insert all products
-    await db.Product.bulkCreate([...products, ...mcGinleyProducts]);
+    // Use upsert instead of delete and create
+    for (const product of [...products, ...mcGinleyProducts]) {
+      await db.Product.upsert(product, {
+        where: { sku: product.sku },
+        returning: true
+      });
+    }
     
     console.log('Products seeded successfully');
   } catch (error) {
@@ -531,11 +535,11 @@ export const seedProducts = async () => {
 if (require.main === module) {
   seedProducts()
     .then(() => {
-      console.log('Product seeding completed');
+      console.log('Seeding completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Product seeding failed:', error);
+      console.error('Seeding failed:', error);
       process.exit(1);
     });
 }
