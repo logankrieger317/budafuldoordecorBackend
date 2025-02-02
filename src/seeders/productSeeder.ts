@@ -516,12 +516,9 @@ export const seedProducts = async () => {
   try {
     console.log('Starting product seeding...');
     
-    // Use upsert instead of delete and create
+    // Use upsert for each product
     for (const product of [...products, ...mcGinleyProducts]) {
-      await db.Product.upsert(product, {
-        where: { sku: product.sku },
-        returning: true
-      });
+      await db.Product.upsert(product);
     }
     
     console.log('Products seeded successfully');
