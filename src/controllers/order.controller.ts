@@ -54,7 +54,7 @@ export const orderController = {
         );
       }
 
-      console.log('Calculated total:', calculatedTotal.toFixed(2));
+      console.log('Calculated total:', calculatedTotal);
       console.log('Received totalAmount:', totalAmount);
 
       // Verify the totals match (within a small margin for floating point precision)
@@ -63,14 +63,14 @@ export const orderController = {
         throw new AppError('Order total mismatch', 400);
       }
 
-      // Create order
+      // Create order with number values
       const order = await db.Order.create(
         {
           customerEmail,
           customerName,
           shippingAddress,
           billingAddress,
-          totalAmount: calculatedTotal.toFixed(2),
+          totalAmount: calculatedTotal, // Store as number
           status: 'pending',
           paymentStatus: 'pending',
           phone,
@@ -79,7 +79,7 @@ export const orderController = {
         { transaction }
       );
 
-      // Create order items
+      // Create order items with number values
       const orderItems = await Promise.all(
         items.map(item =>
           db.OrderItem.create(
@@ -87,7 +87,7 @@ export const orderController = {
               orderId: order.id,
               productSku: String(item.productSku),
               quantity: Number(item.quantity),
-              priceAtTime: Number(item.price).toFixed(2)
+              priceAtTime: Number(item.price) // Store as number
             },
             { transaction }
           )
@@ -96,13 +96,21 @@ export const orderController = {
 
       await transaction.commit();
 
+      // Format numbers as strings only in the response
+      const orderJSON = order.toJSON();
+      const formattedOrder = {
+        ...orderJSON,
+        totalAmount: Number(orderJSON.totalAmount).toFixed(2),
+        items: orderItems.map(item => ({
+          ...item.toJSON(),
+          priceAtTime: Number(item.priceAtTime).toFixed(2)
+        }))
+      };
+
       res.status(201).json({
         status: 'success',
         data: {
-          order: {
-            ...order.toJSON(),
-            items: orderItems
-          }
+          order: formattedOrder
         }
       });
     } catch (error) {
