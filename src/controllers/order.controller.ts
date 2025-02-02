@@ -17,7 +17,7 @@ export const orderController = {
       items,
       phone,
       notes,
-      total
+      totalAmount
     } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -30,7 +30,7 @@ export const orderController = {
       transaction = await db.sequelize.transaction();
 
       // Calculate total amount and verify product availability
-      let totalAmount = 0;
+      let calculatedTotal = 0;
       for (const item of items) {
         console.log('Processing item:', item);
         const product = await db.Product.findByPk(String(item.productSku), { transaction });
@@ -45,7 +45,7 @@ export const orderController = {
           throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
         }
 
-        totalAmount += Number(product.price) * Number(item.quantity);
+        calculatedTotal += Number(product.price) * Number(item.quantity);
 
         // Update product quantity
         await product.update(
@@ -54,8 +54,14 @@ export const orderController = {
         );
       }
 
-      console.log('Calculated totalAmount:', totalAmount);
-      console.log('Received total:', total);
+      console.log('Calculated total:', calculatedTotal.toFixed(2));
+      console.log('Received totalAmount:', totalAmount);
+
+      // Verify the totals match (within a small margin for floating point precision)
+      const receivedTotal = Number(totalAmount);
+      if (Math.abs(calculatedTotal - receivedTotal) > 0.01) {
+        throw new AppError('Order total mismatch', 400);
+      }
 
       // Create order
       const order = await db.Order.create(
@@ -64,7 +70,7 @@ export const orderController = {
           customerName,
           shippingAddress,
           billingAddress,
-          totalAmount: Number(total), // Use the total from the request
+          totalAmount: calculatedTotal.toFixed(2),
           status: 'pending',
           paymentStatus: 'pending',
           phone,
@@ -81,7 +87,7 @@ export const orderController = {
               orderId: order.id,
               productSku: String(item.productSku),
               quantity: Number(item.quantity),
-              priceAtTime: Number(item.price)
+              priceAtTime: Number(item.price).toFixed(2)
             },
             { transaction }
           )
