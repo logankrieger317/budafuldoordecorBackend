@@ -5,6 +5,7 @@ import { config } from 'dotenv';
 import { Database } from './models';
 import { errorHandler } from './middleware/errorHandler';
 import { seedProducts } from './seeders/productSeeder';
+import { seedAdmin } from './seeders/adminSeeder';
 
 // Load environment variables
 config();
@@ -26,11 +27,15 @@ async function initializeDatabase() {
     await db.sequelize.sync({ force: false, alter: false });
     console.log('Database sync completed');
     
-    // Finally seed if enabled
+    // Always seed admin user for initial setup
+    console.log('Ensuring admin user exists...');
+    await seedAdmin();
+    
+    // Finally seed products if enabled
     if (process.env.SEED_DATABASE === 'true') {
-      console.log('Seeding database...');
+      console.log('Seeding products...');
       await seedProducts();
-      console.log('Database seeded successfully.');
+      console.log('Products seeded successfully.');
     }
   } catch (error) {
     console.error('Database initialization failed:', error);
