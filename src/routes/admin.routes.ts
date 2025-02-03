@@ -7,6 +7,7 @@ import { Product } from '../models/product.model';
 import { Order } from '../models/order.model';
 import { OrderItem } from '../models/order-item.model';
 import { Database } from '../models';
+import { ProductCreationAttributes } from '../types/models';
 
 const router: Router = express.Router();
 const db = Database.getInstance();
@@ -19,20 +20,7 @@ interface LoginRequest extends Request {
 }
 
 interface ProductRequest extends Request {
-  body: {
-    name: string;
-    sku: string;
-    description: string;
-    price: number;
-    category: string;
-    imageUrl?: string;
-    stock: number;
-    width?: number;
-    length?: number;
-    color?: string;
-    brand?: string;
-    isWired?: boolean;
-  };
+  body: ProductCreationAttributes;
 }
 
 // Admin Login
