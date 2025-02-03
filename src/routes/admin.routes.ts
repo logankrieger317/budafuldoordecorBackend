@@ -295,4 +295,30 @@ router.put('/orders/:id', adminAuth, async (req: Request, res: Response): Promis
   }
 });
 
+// Delete order
+router.delete('/orders/:id', adminAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findByPk(id);
+    
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    // Delete associated order items first
+    await OrderItem.destroy({ where: { orderId: id } });
+    
+    // Then delete the order
+    await order.destroy();
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    res.status(500).json({ 
+      message: 'Error deleting order',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router;
