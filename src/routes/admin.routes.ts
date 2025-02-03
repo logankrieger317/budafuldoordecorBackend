@@ -89,20 +89,26 @@ router.post('/login', async (req: LoginRequest, res: Response): Promise<void> =>
 // Get all orders
 router.get('/orders', adminAuth, async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Fetching orders...');
     const orders = await Order.findAll({
-      include: [
-        {
-          model: OrderItem,
-          include: [Product],
-        },
-      ],
-      order: [['createdAt', 'DESC']],
+      include: [{
+        model: OrderItem,
+        as: 'items',
+        include: [{
+          model: Product,
+          attributes: ['name', 'sku', 'price']
+        }]
+      }],
+      order: [['createdAt', 'DESC']]
     });
-
+    console.log(`Found ${orders.length} orders`);
     res.json(orders);
   } catch (error) {
-    console.error('Get orders error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ 
+      message: 'Error fetching orders',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
