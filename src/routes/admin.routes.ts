@@ -58,7 +58,7 @@ router.post('/login', async (req: LoginRequest, res: Response): Promise<void> =>
 });
 
 // Get all orders
-router.get('/orders', adminAuth, async (_req: Request, res: Response): Promise<void> => {
+router.get('/orders', adminAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const orders = await Order.findAll({
       include: [
@@ -78,7 +78,7 @@ router.get('/orders', adminAuth, async (_req: Request, res: Response): Promise<v
 });
 
 // Get all products
-router.get('/products', adminAuth, async (_req: Request, res: Response): Promise<void> => {
+router.get('/products', adminAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const products = await Product.findAll();
     res.json(products);
