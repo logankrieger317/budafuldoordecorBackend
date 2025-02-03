@@ -46,8 +46,17 @@ async function initializeDatabase() {
 // Initialize database
 initializeDatabase();
 
+// Configure CORS
+const corsOptions = {
+  origin: ['https://budafuldoordecor.com', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(helmet());
 app.use(express.json());
 

@@ -26,19 +26,36 @@ interface ProductRequest extends Request {
 // Admin Login
 router.post('/login', async (req: LoginRequest, res: Response): Promise<void> => {
   try {
+    console.log('Login attempt:', {
+      email: req.body.email,
+      headers: req.headers,
+      body: req.body
+    });
+
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      console.log('Missing credentials');
+      res.status(400).json({ message: 'Email and password are required' });
+      return;
+    }
 
     // Find admin user
     const admin = await Admin.findOne({ where: { email } });
+    console.log('Admin found:', admin ? 'yes' : 'no');
 
     if (!admin) {
+      console.log('Admin not found');
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
     // Verify password
     const isMatch = await bcrypt.compare(password, admin.password);
+    console.log('Password match:', isMatch);
+
     if (!isMatch) {
+      console.log('Invalid password');
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
@@ -50,10 +67,22 @@ router.post('/login', async (req: LoginRequest, res: Response): Promise<void> =>
       { expiresIn: '24h' }
     );
 
-    res.json({ token });
+    console.log('Login successful, token generated');
+
+    res.status(200).json({
+      token,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name
+      }
+    });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Server error during login',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
