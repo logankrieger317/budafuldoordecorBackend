@@ -71,9 +71,11 @@ app.get('/health', async (req, res) => {
 // Routes
 import productRoutes from './routes/product.routes';
 import orderRoutes from './routes/order.routes';
+import adminRoutes from './routes/admin.routes';
 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
