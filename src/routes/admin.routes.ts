@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { adminAuth } from '../middleware/adminAuth';
@@ -6,11 +6,13 @@ import { Admin } from '../models/admin.model';
 import { Product } from '../models/product.model';
 import { Order } from '../models/order.model';
 import { OrderItem } from '../models/order-item.model';
+import { Database } from '../models';
 
 const router = express.Router();
+const db = Database.getInstance();
 
 // Admin Login
-router.post('/login', async (req, res) => {
+router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -42,7 +44,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get all orders
-router.get('/orders', adminAuth, async (req, res) => {
+router.get('/orders', adminAuth, async (req: Request, res: Response) => {
   try {
     const orders = await Order.findAll({
       include: [
@@ -62,7 +64,7 @@ router.get('/orders', adminAuth, async (req, res) => {
 });
 
 // Get all products
-router.get('/products', adminAuth, async (req, res) => {
+router.get('/products', adminAuth, async (req: Request, res: Response) => {
   try {
     const products = await Product.findAll();
     res.json(products);
@@ -73,7 +75,7 @@ router.get('/products', adminAuth, async (req, res) => {
 });
 
 // Get single product
-router.get('/products/:id', adminAuth, async (req, res) => {
+router.get('/products/:id', adminAuth, async (req: Request, res: Response) => {
   try {
     const product = await Product.findByPk(req.params.id);
 
@@ -89,7 +91,7 @@ router.get('/products/:id', adminAuth, async (req, res) => {
 });
 
 // Create product
-router.post('/products', adminAuth, async (req, res) => {
+router.post('/products', adminAuth, async (req: Request, res: Response) => {
   try {
     const product = await Product.create(req.body);
     res.status(201).json(product);
@@ -100,7 +102,7 @@ router.post('/products', adminAuth, async (req, res) => {
 });
 
 // Update product
-router.put('/products/:id', adminAuth, async (req, res) => {
+router.put('/products/:id', adminAuth, async (req: Request, res: Response) => {
   try {
     const product = await Product.findByPk(req.params.id);
 
@@ -117,7 +119,7 @@ router.put('/products/:id', adminAuth, async (req, res) => {
 });
 
 // Delete product
-router.delete('/products/:id', adminAuth, async (req, res) => {
+router.delete('/products/:id', adminAuth, async (req: Request, res: Response) => {
   try {
     const product = await Product.findByPk(req.params.id);
 
