@@ -140,6 +140,27 @@ router.get('/products/:id', adminAuth, async (req: Request, res: Response): Prom
   }
 });
 
+// Get a single product
+router.get('/products/:sku', adminAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sku } = req.params;
+    const product = await Product.findByPk(sku);
+    
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ 
+      message: 'Error fetching product',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Create product
 router.post('/products', adminAuth, async (req: ProductRequest, res: Response): Promise<void> => {
   try {
@@ -169,6 +190,29 @@ router.put('/products/:id', adminAuth, async (req: ProductRequest, res: Response
   }
 });
 
+// Update a product
+router.put('/products/:sku', adminAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sku } = req.params;
+    const updates = req.body;
+
+    const product = await Product.findByPk(sku);
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    await product.update(updates);
+    res.json(product);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ 
+      message: 'Error updating product',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Delete product
 router.delete('/products/:id', adminAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -184,6 +228,28 @@ router.delete('/products/:id', adminAuth, async (req: Request, res: Response): P
   } catch (error) {
     console.error('Delete product error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a product
+router.delete('/products/:sku', adminAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sku } = req.params;
+    const product = await Product.findByPk(sku);
+    
+    if (!product) {
+      res.status(404).json({ message: 'Product not found' });
+      return;
+    }
+
+    await product.destroy();
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    res.status(500).json({ 
+      message: 'Error deleting product',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
