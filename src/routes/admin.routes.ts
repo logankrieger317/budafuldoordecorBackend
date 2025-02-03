@@ -187,4 +187,46 @@ router.delete('/products/:id', adminAuth, async (req: Request, res: Response): P
   }
 });
 
+// Update order status
+router.put('/orders/:id', adminAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status, paymentStatus } = req.body;
+
+    const order = await Order.findByPk(id);
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+
+    if (status) {
+      order.status = status;
+    }
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+    }
+
+    await order.save();
+    
+    const updatedOrder = await Order.findByPk(id, {
+      include: [{
+        model: OrderItem,
+        as: 'items',
+        include: [{
+          model: Product,
+          attributes: ['name', 'sku', 'price']
+        }]
+      }]
+    });
+
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(500).json({ 
+      message: 'Error updating order',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router;
