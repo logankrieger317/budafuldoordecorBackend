@@ -1,6 +1,6 @@
 import { QueryInterface, DataTypes } from 'sequelize';
 
-module.exports = {
+export = {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.addColumn('Users', 'isAdmin', {
       type: DataTypes.BOOLEAN,
@@ -12,7 +12,7 @@ module.exports = {
     await queryInterface.sequelize.query(`
       UPDATE "Users"
       SET "isAdmin" = true
-      WHERE email IN ('admin@budafuldoordecor.com')
+      WHERE "email" = 'admin@budafuldoordecor.com';
     `);
   },
 
