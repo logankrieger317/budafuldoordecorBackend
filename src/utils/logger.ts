@@ -1,6 +1,5 @@
 import winston from 'winston';
 import morgan from 'morgan';
-import { Request, Response } from 'express';
 
 // Create Winston logger
 const logger = winston.createLogger({
@@ -16,47 +15,39 @@ const logger = winston.createLogger({
         winston.format.colorize(),
         winston.format.simple()
       )
-    }),
-    // Write all logs with level 'error' and below to error.log
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Write all logs with level 'info' and below to combined.log
-    new winston.transports.File({
-      filename: 'logs/combined.log',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
     })
-  ],
-  exceptionHandlers: [
-    new winston.transports.File({ filename: 'logs/exceptions.log' })
   ]
 });
 
-// Create custom Morgan token for response time
-morgan.token('response-time', (req: Request, res: Response): string => {
-  if (!req._startAt || !res._startAt) {
-    return '';
-  }
-  const ms = (res._startAt[0] - req._startAt[0]) * 1e3 +
-    (res._startAt[1] - req._startAt[1]) * 1e-6;
-  return ms.toFixed(3);
-});
-
-// Create custom Morgan format
-const morganFormat = ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" - :response-time ms';
+// In production, also log to files
+if (process.env.NODE_ENV === 'production') {
+  logger.add(new winston.transports.File({
+    filename: 'logs/error.log',
+    level: 'error',
+    maxsize: 5242880, // 5MB
+    maxFiles: 5,
+  }));
+  
+  logger.add(new winston.transports.File({
+    filename: 'logs/combined.log',
+    maxsize: 5242880, // 5MB
+    maxFiles: 5,
+  }));
+}
 
 // Create Morgan middleware with custom logging
-const morganMiddleware = morgan(morganFormat, {
+const morganMiddleware = morgan('combined', {
   stream: {
-    write: (message) => logger.info(message.trim())
+    write: (message: string) => {
+      logger.info(message.trim());
+    }
   },
-  skip: (req, res) => {
-    // Skip logging for successful health check endpoints
-    return req.url === '/health' && res.statusCode === 200;
+  skip: (req: any, res: any) => {
+    if (process.env.NODE_ENV === 'production') {
+      // In production, skip logging successful health checks
+      return req.url === '/health' && res.statusCode === 200;
+    }
+    return false;
   }
 });
 
