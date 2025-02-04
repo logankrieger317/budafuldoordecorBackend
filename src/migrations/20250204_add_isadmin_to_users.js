@@ -1,23 +1,29 @@
+'use strict';
+
 const { DataTypes } = require('sequelize');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface) {
+  async up(queryInterface, Sequelize) {
     await queryInterface.addColumn('users', 'isAdmin', {
-      type: DataTypes.BOOLEAN,
+      type: Sequelize.BOOLEAN,
       defaultValue: false,
       allowNull: false
     });
 
-    // Set specific email addresses as admin
     await queryInterface.sequelize.query(`
-      UPDATE "users"
+      UPDATE users
+      SET "isAdmin" = false;
+    `);
+
+    await queryInterface.sequelize.query(`
+      UPDATE users
       SET "isAdmin" = true
-      WHERE "email" = 'admin@budafuldoordecor.com';
+      WHERE email = 'admin@budafuldoordecor.com';
     `);
   },
 
-  async down(queryInterface) {
+  async down(queryInterface, Sequelize) {
     await queryInterface.removeColumn('users', 'isAdmin');
   }
 };
