@@ -155,15 +155,21 @@ export const orderController = {
 
   async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log('Fetching orders for customer:', req.params.customerEmail);
+      const customerEmail = req.params.customerEmail;
+      console.log('Fetching orders for customer:', customerEmail);
       
+      if (!customerEmail) {
+        throw new AppError('Customer email is required', 400);
+      }
+
       const orders = await db.Order.findAll({
-        where: { customerEmail: req.params.customerEmail },
+        where: { customerEmail },
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
-            model: db.Product
+            model: db.Product,
+            attributes: ['name', 'price', 'imageUrl']
           }]
         }],
         order: [['createdAt', 'DESC']] // Show newest orders first

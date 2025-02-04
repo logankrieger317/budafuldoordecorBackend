@@ -27,7 +27,7 @@ const updateOrderStatusValidation = [
 
 // Routes - specific routes first
 router.post('/', createOrderValidation, validateRequest, orderController.createOrder);
-router.get('/customer/:email', authenticateToken, orderController.getCustomerOrders);
+router.get('/customer/:customerEmail', authenticateToken, orderController.getCustomerOrders);
 router.patch('/:orderId/status', updateOrderStatusValidation, authenticateToken, validateRequest, orderController.updateOrderStatus);
 router.get('/:orderId', orderController.getOrder);
 

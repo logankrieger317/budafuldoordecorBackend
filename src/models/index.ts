@@ -72,6 +72,18 @@ export class Database {
         targetKey: 'sku',
       });
 
+      // Add User-Order association
+      this.User.hasMany(this.Order, {
+        foreignKey: 'customerEmail',
+        sourceKey: 'email',
+        as: 'orders'
+      });
+
+      this.Order.belongsTo(this.User, {
+        foreignKey: 'customerEmail',
+        targetKey: 'email'
+      });
+
       // User associations with proper through table definition
       this.User.belongsToMany(this.Product, {
         through: {
