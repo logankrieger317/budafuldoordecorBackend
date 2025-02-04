@@ -3,7 +3,7 @@ const { DataTypes } = require('sequelize');
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface) {
-    await queryInterface.addColumn('Users', 'isAdmin', {
+    await queryInterface.addColumn('users', 'isAdmin', {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false
@@ -11,13 +11,13 @@ module.exports = {
 
     // Set specific email addresses as admin
     await queryInterface.sequelize.query(`
-      UPDATE "Users"
+      UPDATE "users"
       SET "isAdmin" = true
       WHERE "email" = 'admin@budafuldoordecor.com';
     `);
   },
 
   async down(queryInterface) {
-    await queryInterface.removeColumn('Users', 'isAdmin');
+    await queryInterface.removeColumn('users', 'isAdmin');
   }
 };
