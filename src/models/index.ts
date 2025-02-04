@@ -2,6 +2,7 @@ import { Sequelize } from 'sequelize';
 import { Product } from './product.model';
 import { Order } from './order.model';
 import { OrderItem } from './order-item.model';
+import { User } from './user.model';
 import dbConfig from '../config/database';
 
 const env = process.env.NODE_ENV || 'development';
@@ -10,6 +11,7 @@ const config = dbConfig[env as keyof typeof dbConfig];
 export class Database {
   private static instance: Database;
   public sequelize: Sequelize;
+  public User: typeof User;
   public Product: typeof Product;
   public Order: typeof Order;
   public OrderItem: typeof OrderItem;
@@ -45,29 +47,48 @@ export class Database {
 
       console.log('Initializing models...');
       // Initialize models
+      this.User = User.initModel(this.sequelize);
       this.Product = Product.initModel(this.sequelize);
       this.Order = Order.initModel(this.sequelize);
       this.OrderItem = OrderItem.initModel(this.sequelize);
 
-      console.log('Setting up associations...');
-      // Set up associations
-      this.Order.hasMany(this.OrderItem, {
-        foreignKey: 'orderId',
-        as: 'items'
-      });
-      this.OrderItem.belongsTo(this.Order, {
-        foreignKey: 'orderId'
-      });
-      this.OrderItem.belongsTo(this.Product, {
-        foreignKey: 'productSku',
-        targetKey: 'sku'
-      });
+      // Initialize associations
       this.Product.hasMany(this.OrderItem, {
         foreignKey: 'productSku',
-        sourceKey: 'sku'
+        sourceKey: 'sku',
       });
+
+      this.Order.hasMany(this.OrderItem, {
+        foreignKey: 'orderId',
+        as: 'items',
+      });
+
+      this.OrderItem.belongsTo(this.Order, {
+        foreignKey: 'orderId',
+      });
+
+      this.OrderItem.belongsTo(this.Product, {
+        foreignKey: 'productSku',
+        targetKey: 'sku',
+      });
+
+      // User associations
+      this.User.belongsToMany(this.Product, {
+        through: 'favorites',
+        as: 'favoriteProducts',
+        foreignKey: 'userId',
+      });
+
+      this.Product.belongsToMany(this.User, {
+        through: 'favorites',
+        as: 'favoritedBy',
+        foreignKey: 'productSku',
+        targetKey: 'sku',
+      });
+
+      console.log('Models initialized successfully');
     } catch (error) {
-      console.error('Error initializing database:', error);
+      console.error('Failed to initialize database:', error);
       throw error;
     }
   }
@@ -79,18 +100,42 @@ export class Database {
     return Database.instance;
   }
 
-  public async connect(): Promise<void> {
+  public async authenticate(): Promise<void> {
     try {
       await this.sequelize.authenticate();
       console.log('Database connection has been established successfully.');
-      
-      // Sync database tables
-      console.log('Syncing database tables...');
-      await this.sequelize.sync({ alter: true });
-      console.log('Database tables have been synchronized.');
     } catch (error) {
       console.error('Unable to connect to the database:', error);
       throw error;
     }
   }
+
+  public async sync(force = false): Promise<void> {
+    try {
+      await this.sequelize.sync({ force });
+      console.log('Database synced successfully');
+    } catch (error) {
+      console.error('Failed to sync database:', error);
+      throw error;
+    }
+  }
+
+  public async close(): Promise<void> {
+    try {
+      await this.sequelize.close();
+      console.log('Database connection closed successfully');
+    } catch (error) {
+      console.error('Failed to close database connection:', error);
+      throw error;
+    }
+  }
 }
+
+export const db = Database.getInstance();
+export default db;
+export {
+  User,
+  Product,
+  Order,
+  OrderItem,
+};
