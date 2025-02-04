@@ -155,6 +155,8 @@ export const orderController = {
 
   async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
     try {
+      console.log('Fetching orders for customer:', req.params.customerEmail);
+      
       const orders = await db.Order.findAll({
         where: { customerEmail: req.params.customerEmail },
         include: [{
@@ -164,14 +166,18 @@ export const orderController = {
             model: db.Product,
             as: 'product'
           }]
-        }]
+        }],
+        order: [['createdAt', 'DESC']] // Show newest orders first
       });
 
+      console.log('Found orders:', orders.length);
+      
       res.json({
         status: 'success',
         data: { orders }
       });
     } catch (error) {
+      console.error('Error fetching customer orders:', error);
       next(error);
     }
   },

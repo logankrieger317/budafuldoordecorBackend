@@ -25,9 +25,10 @@ const updateOrderStatusValidation = [
     .withMessage('Invalid order status')
 ];
 
+// Routes - specific routes first
 router.post('/', createOrderValidation, validateRequest, orderController.createOrder);
-router.get('/:orderId', orderController.getOrder);
 router.get('/customer/:email', authenticateToken, orderController.getCustomerOrders);
 router.patch('/:orderId/status', updateOrderStatusValidation, authenticateToken, validateRequest, orderController.updateOrderStatus);
+router.get('/:orderId', orderController.getOrder);
 
 export default router;
