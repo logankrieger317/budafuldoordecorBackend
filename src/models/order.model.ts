@@ -1,9 +1,11 @@
 import { Model, DataTypes, Sequelize } from 'sequelize';
 import { OrderAttributes, OrderCreationAttributes } from '../types/models';
 import { v4 as uuidv4 } from 'uuid';
+import { User } from './user.model';
 
 export class Order extends Model<OrderAttributes, OrderCreationAttributes> implements OrderAttributes {
   public id!: string;
+  public userId?: string;
   public customerEmail!: string;
   public customerName!: string;
   public shippingAddress!: string;
@@ -18,6 +20,10 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
+  // Add association methods
+  public getUser!: () => Promise<User>;
+  public setUser!: (user: User) => Promise<void>;
+
   static initModel(sequelize: Sequelize): typeof Order {
     Order.init(
       {
@@ -25,6 +31,14 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
           type: DataTypes.UUID,
           primaryKey: true,
           defaultValue: () => uuidv4()
+        },
+        userId: {
+          type: DataTypes.UUID,
+          allowNull: true,
+          references: {
+            model: 'users',
+            key: 'id'
+          }
         },
         customerEmail: {
           type: DataTypes.STRING,
@@ -87,5 +101,12 @@ export class Order extends Model<OrderAttributes, OrderCreationAttributes> imple
       }
     );
     return Order;
+  }
+
+  static associate(models: any) {
+    Order.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'user'
+    });
   }
 }

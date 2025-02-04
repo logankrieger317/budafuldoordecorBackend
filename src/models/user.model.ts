@@ -85,6 +85,13 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 
     return User;
   }
+
+  static associate(models: any) {
+    User.hasMany(models.Order, {
+      foreignKey: 'userId',
+      as: 'orders'
+    });
+  }
 }
 
 export default User;
