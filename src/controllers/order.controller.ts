@@ -163,8 +163,7 @@ export const orderController = {
           model: db.OrderItem,
           as: 'items',
           include: [{
-            model: db.Product,
-            as: 'product'
+            model: db.Product
           }]
         }],
         order: [['createdAt', 'DESC']] // Show newest orders first
