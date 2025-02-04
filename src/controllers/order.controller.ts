@@ -129,19 +129,29 @@ export const orderController = {
 
   async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(String(req.params.orderId), {
+      const orderId = req.params.orderId;
+      console.log('Fetching order details for ID:', orderId);
+
+      if (!orderId) {
+        throw new AppError('Order ID is required', 400);
+      }
+
+      const order = await db.Order.findOne({
+        where: { id: orderId },
         include: [{
           model: db.OrderItem,
           as: 'items',
           include: [{
             model: db.Product,
-            as: 'product'
+            attributes: ['name', 'price', 'imageUrl']
           }]
         }]
       });
 
+      console.log('Found order:', order ? 'yes' : 'no');
+
       if (!order) {
-        return next(new AppError('Order not found', 404));
+        throw new AppError('Order not found', 404);
       }
 
       res.json({
@@ -149,6 +159,7 @@ export const orderController = {
         data: { order }
       });
     } catch (error) {
+      console.error('Error fetching order:', error);
       next(error);
     }
   },
