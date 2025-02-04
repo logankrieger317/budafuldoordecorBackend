@@ -8,6 +8,7 @@ export interface UserAttributes {
   firstName: string;
   lastName: string;
   phone?: string;
+  isAdmin: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -21,6 +22,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public firstName!: string;
   public lastName!: string;
   public phone?: string;
+  public isAdmin!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -34,8 +36,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
       {
         id: {
           type: DataTypes.UUID,
-          defaultValue: DataTypes.UUIDV4,
           primaryKey: true,
+          defaultValue: DataTypes.UUIDV4,
         },
         email: {
           type: DataTypes.STRING,
@@ -59,6 +61,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
         },
         phone: {
           type: DataTypes.STRING,
+        },
+        isAdmin: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
         },
       },
       {

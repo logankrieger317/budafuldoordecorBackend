@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/errors';
+import { AppError } from '../utils/appError';
 import { ValidationError as SequelizeValidationError } from 'sequelize';
 
 interface ErrorResponse {
@@ -10,47 +10,38 @@ interface ErrorResponse {
 }
 
 export const errorHandler = (
-  err: Error,
+  err: Error | AppError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.error('Error:', err);
-
-  let statusCode = 500;
-  let errorResponse: ErrorResponse = {
-    status: 'error',
-    message: 'Internal server error'
-  };
-
-  // Handle AppError instances
   if (err instanceof AppError) {
-    statusCode = err.statusCode;
-    errorResponse = {
+    return res.status(err.statusCode).json({
       status: err.status,
       message: err.message
-    };
+    });
   }
 
   // Handle Sequelize validation errors
   if (err instanceof SequelizeValidationError) {
-    statusCode = 400;
-    errorResponse = {
+    return res.status(400).json({
       status: 'validation_error',
       message: 'Validation failed',
       errors: err.errors.map(e => ({
         field: e.path,
         message: e.message
       }))
-    };
+    });
   }
 
-  // Add stack trace in development
-  if (process.env.NODE_ENV === 'development') {
-    errorResponse.stack = err.stack;
-  }
+  // Log unexpected errors
+  console.error('Unexpected error:', err);
 
-  res.status(statusCode).json(errorResponse);
+  // Send generic error response for unexpected errors
+  res.status(500).json({
+    status: 'error',
+    message: 'Something went wrong'
+  });
 };
 
 // Handle unhandled rejections and exceptions

@@ -1,103 +1,122 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import { User } from '../models';
+import jwt from 'jsonwebtoken';
+import { db } from '../models';
+import { AppError } from '../utils/appError';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRES_IN = '24h';
-
-export class AuthController {
-  static async register(req: Request, res: Response) {
+export const authController = {
+  async register(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, password, firstName, lastName, phone } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await db.User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'User already exists with this email' });
+        throw new AppError('Email already registered', 400);
       }
 
       // Create new user
-      const user = await User.create({
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await db.User.create({
         email,
-        password, // Password will be hashed by model hooks
+        password: hashedPassword,
         firstName,
         lastName,
         phone,
+        isAdmin: false // Default to false for new users
       });
 
       // Generate JWT token
       const token = jwt.sign(
-        { id: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { 
+          id: user.id, 
+          email: user.email,
+          isAdmin: user.isAdmin
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
       );
 
-      // Return user data (excluding password) and token
-      const { password: _, ...userData } = user.toJSON();
+      // Don't send password in response
+      const { password: _, ...userWithoutPassword } = user.toJSON();
+
       res.status(201).json({
-        message: 'User registered successfully',
-        user: userData,
+        status: 'success',
         token,
+        data: {
+          user: userWithoutPassword
+        }
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: 'Error registering user' });
+      next(error);
     }
-  }
+  },
 
-  static async login(req: Request, res: Response) {
+  async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, password } = req.body;
 
       // Find user
-      const user = await User.findOne({ where: { email } });
+      const user = await db.User.findOne({ where: { email } });
       if (!user) {
-        return res.status(401).json({ message: 'Invalid email or password' });
+        throw new AppError('Invalid email or password', 401);
       }
 
-      // Validate password
-      const isValidPassword = await user.validatePassword(password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid email or password' });
+      // Check password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new AppError('Invalid email or password', 401);
       }
 
       // Generate JWT token
       const token = jwt.sign(
-        { id: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { 
+          id: user.id, 
+          email: user.email,
+          isAdmin: user.isAdmin
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
       );
 
-      // Return user data (excluding password) and token
-      const { password: _, ...userData } = user.toJSON();
+      // Don't send password in response
+      const { password: _, ...userWithoutPassword } = user.toJSON();
+
       res.json({
-        message: 'Login successful',
-        user: userData,
+        status: 'success',
         token,
+        data: {
+          user: userWithoutPassword
+        }
       });
     } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ message: 'Error during login' });
+      next(error);
     }
-  }
+  },
 
-  static async getProfile(req: Request, res: Response) {
+  async getProfile(req: Request, res: Response, next: NextFunction) {
     try {
-      // User will be attached by auth middleware
-      const userId = (req as any).user.id;
-      const user = await User.findByPk(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new AppError('Not authenticated', 401);
       }
 
-      // Return user data excluding password
-      const { password: _, ...userData } = user.toJSON();
-      res.json(userData);
+      const user = await db.User.findByPk(userId);
+      if (!user) {
+        throw new AppError('User not found', 404);
+      }
+
+      // Don't send password in response
+      const { password: _, ...userWithoutPassword } = user.toJSON();
+
+      res.json({
+        status: 'success',
+        data: {
+          user: userWithoutPassword
+        }
+      });
     } catch (error) {
-      console.error('Get profile error:', error);
-      res.status(500).json({ message: 'Error fetching user profile' });
+      next(error);
     }
   }
-}
+};

@@ -1,58 +1,54 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { AppError } from '../utils/appError';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+interface JwtPayload {
+  id: string;
+  email: string;
+  isAdmin: boolean;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        isAdmin: boolean;
+      };
+    }
+  }
+}
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    return res.status(401).json({ message: 'Authentication token is required' });
-  }
-
   try {
-    const user = jwt.verify(token, JWT_SECRET);
-    (req as any).user = user;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      throw new AppError('No token provided', 401);
+    }
+
+    const decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'your-secret-key'
+    ) as JwtPayload;
+    
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      isAdmin: decoded.isAdmin
+    };
+
     next();
   } catch (error) {
-    return res.status(403).json({ message: 'Invalid or expired token' });
+    next(new AppError('Invalid token', 401));
   }
 };
 
-export const validateRegistration = (req: Request, res: Response, next: NextFunction) => {
-  const { email, password, firstName, lastName } = req.body;
-
-  if (!email || !password || !firstName || !lastName) {
-    return res.status(400).json({
-      message: 'Missing required fields',
-      required: ['email', 'password', 'firstName', 'lastName'],
-    });
+export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user?.isAdmin) {
+    return next(new AppError('Admin access required', 403));
   }
-
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ message: 'Invalid email format' });
-  }
-
-  // Validate password strength
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-  }
-
-  next();
-};
-
-export const validateLogin = (req: Request, res: Response, next: NextFunction) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({
-      message: 'Missing required fields',
-      required: ['email', 'password'],
-    });
-  }
-
   next();
 };

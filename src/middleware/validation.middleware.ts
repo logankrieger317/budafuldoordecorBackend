@@ -45,6 +45,46 @@ export const loginValidation = [
   validate,
 ];
 
+// Auth validation middleware
+export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const messages = errors.array().map(err => err.msg);
+    throw new ValidationError(messages.join(', '));
+  }
+  next();
+};
+
+export const validateRegistration = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+  body('firstName')
+    .notEmpty()
+    .withMessage('First name is required'),
+  body('lastName')
+    .notEmpty()
+    .withMessage('Last name is required'),
+  body('phone')
+    .optional()
+    .matches(/^\+?[\d\s-]+$/)
+    .withMessage('Invalid phone number format'),
+  validateRequest
+];
+
+export const validateLogin = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+  validateRequest
+];
+
 // Order validation schemas
 export const createOrderValidation = [
   body('customerEmail')
