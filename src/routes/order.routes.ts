@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { orderController } from '../controllers/order.controller';
 import { body, param } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest';
+import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ const updateOrderStatusValidation = [
 
 router.post('/', createOrderValidation, validateRequest, orderController.createOrder);
 router.get('/:orderId', orderController.getOrder);
-router.get('/customer/:email', orderController.getCustomerOrders);
-router.patch('/:orderId/status', updateOrderStatusValidation, validateRequest, orderController.updateOrderStatus);
+router.get('/customer/:email', authenticateToken, orderController.getCustomerOrders);
+router.patch('/:orderId/status', updateOrderStatusValidation, authenticateToken, validateRequest, orderController.updateOrderStatus);
 
 export default router;
