@@ -66,19 +66,37 @@ app.get('/health', async (req, res) => {
     // Test database connection
     await db.sequelize.authenticate();
     
-    res.status(200).json({
+    // Quick check of essential services
+    const healthcheck = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      database: 'connected',
-      uptime: process.uptime()
-    });
+      services: {
+        database: 'connected',
+        server: 'running'
+      },
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+    // Return 200 for Railway's health check
+    res.status(200).json(healthcheck);
   } catch (error) {
-    res.status(503).json({
+    console.error('Health check failed:', error);
+    
+    const healthcheck = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      database: 'disconnected',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      services: {
+        database: 'disconnected',
+        server: 'running'
+      },
+      error: error instanceof Error ? error.message : 'Unknown error',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+    // Return 503 to indicate service unavailability
+    res.status(503).json(healthcheck);
   }
 });
 
