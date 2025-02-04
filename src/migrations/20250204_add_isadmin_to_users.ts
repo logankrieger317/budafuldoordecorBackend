@@ -1,7 +1,8 @@
-import { QueryInterface, DataTypes } from 'sequelize';
+const { QueryInterface, DataTypes } = require('sequelize');
 
-export = {
-  up: async (queryInterface: QueryInterface) => {
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  async up(queryInterface) {
     await queryInterface.addColumn('Users', 'isAdmin', {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -16,7 +17,7 @@ export = {
     `);
   },
 
-  down: async (queryInterface: QueryInterface) => {
+  async down(queryInterface) {
     await queryInterface.removeColumn('Users', 'isAdmin');
   }
 };
