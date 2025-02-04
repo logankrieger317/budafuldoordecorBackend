@@ -70,7 +70,7 @@ export const orderController = {
           customerName,
           shippingAddress,
           billingAddress,
-          totalAmount: calculatedTotal, // Store as number
+          totalAmount: calculatedTotal,
           status: 'pending',
           paymentStatus: 'pending',
           phone,
@@ -87,7 +87,7 @@ export const orderController = {
               orderId: order.id,
               productSku: String(item.productSku),
               quantity: Number(item.quantity),
-              priceAtTime: Number(item.price) // Store as number
+              priceAtTime: Number(item.price)
             },
             { transaction }
           )
