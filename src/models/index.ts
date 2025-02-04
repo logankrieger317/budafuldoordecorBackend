@@ -72,18 +72,25 @@ export class Database {
         targetKey: 'sku',
       });
 
-      // User associations
+      // User associations with proper through table definition
       this.User.belongsToMany(this.Product, {
-        through: 'favorites',
-        as: 'favoriteProducts',
+        through: {
+          model: 'favorites',
+          unique: true,
+        },
         foreignKey: 'userId',
+        otherKey: 'productSku',
+        as: 'favoriteProducts',
       });
 
       this.Product.belongsToMany(this.User, {
-        through: 'favorites',
-        as: 'favoritedBy',
+        through: {
+          model: 'favorites',
+          unique: true,
+        },
         foreignKey: 'productSku',
-        targetKey: 'sku',
+        otherKey: 'userId',
+        as: 'favoritedBy',
       });
 
       console.log('Models initialized successfully');
