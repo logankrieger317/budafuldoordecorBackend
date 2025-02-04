@@ -74,14 +74,12 @@ export class Database {
 
       // Add User-Order association
       this.User.hasMany(this.Order, {
-        foreignKey: 'customerEmail',
-        sourceKey: 'email',
+        foreignKey: 'userId',
         as: 'orders'
       });
 
       this.Order.belongsTo(this.User, {
-        foreignKey: 'customerEmail',
-        targetKey: 'email'
+        foreignKey: 'userId'
       });
 
       // User associations with proper through table definition
