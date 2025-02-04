@@ -1,5 +1,6 @@
 export interface OrderAttributes {
   id: string;
+  userId?: string; // Optional for guest checkouts
   customerEmail: string;
   customerName: string;
   shippingAddress: string;
