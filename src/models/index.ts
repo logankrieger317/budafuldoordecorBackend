@@ -1,5 +1,4 @@
 import { Sequelize } from 'sequelize';
-import { Product } from './product.model';
 import { Order } from './order.model';
 import { OrderItem } from './order-item.model';
 import { User } from './user.model';
@@ -12,7 +11,6 @@ export class Database {
   private static instance: Database;
   public sequelize: Sequelize;
   public User: typeof User;
-  public Product: typeof Product;
   public Order: typeof Order;
   public OrderItem: typeof OrderItem;
 
@@ -48,16 +46,10 @@ export class Database {
       console.log('Initializing models...');
       // Initialize models
       this.User = User.initModel(this.sequelize);
-      this.Product = Product.initModel(this.sequelize);
       this.Order = Order.initModel(this.sequelize);
       this.OrderItem = OrderItem.initModel(this.sequelize);
 
       // Initialize associations
-      this.Product.hasMany(this.OrderItem, {
-        foreignKey: 'productSku',
-        sourceKey: 'sku',
-      });
-
       this.Order.hasMany(this.OrderItem, {
         foreignKey: 'orderId',
         as: 'items',
@@ -67,12 +59,6 @@ export class Database {
         foreignKey: 'orderId',
       });
 
-      this.OrderItem.belongsTo(this.Product, {
-        foreignKey: 'productSku',
-        targetKey: 'sku',
-      });
-
-      // Add User-Order association
       this.User.hasMany(this.Order, {
         foreignKey: 'userId',
         as: 'orders'
@@ -80,27 +66,6 @@ export class Database {
 
       this.Order.belongsTo(this.User, {
         foreignKey: 'userId'
-      });
-
-      // User associations with proper through table definition
-      this.User.belongsToMany(this.Product, {
-        through: {
-          model: 'favorites',
-          unique: true,
-        },
-        foreignKey: 'userId',
-        otherKey: 'productSku',
-        as: 'favoriteProducts',
-      });
-
-      this.Product.belongsToMany(this.User, {
-        through: {
-          model: 'favorites',
-          unique: true,
-        },
-        foreignKey: 'productSku',
-        otherKey: 'userId',
-        as: 'favoritedBy',
       });
 
       console.log('Models initialized successfully');
@@ -152,7 +117,6 @@ export const db = Database.getInstance();
 export default db;
 export {
   User,
-  Product,
   Order,
   OrderItem,
 };

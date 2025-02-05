@@ -31,10 +31,6 @@ export class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttri
         productSku: {
           type: DataTypes.STRING,
           allowNull: false,
-          references: {
-            model: 'products',
-            key: 'sku'
-          }
         },
         quantity: {
           type: DataTypes.INTEGER,
@@ -53,19 +49,16 @@ export class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttri
       },
       {
         sequelize,
+        modelName: 'OrderItem',
         tableName: 'order_items',
         timestamps: true,
-        indexes: [
-          {
-            fields: ['orderId']
-          },
-          {
-            fields: ['productSku']
-          }
-        ]
       }
     );
 
     return OrderItem;
+  }
+
+  static associate() {
+    // Association with Order will be defined in the Database class
   }
 }

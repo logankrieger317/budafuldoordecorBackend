@@ -17,25 +17,6 @@ export interface OrderAttributes {
 
 export interface OrderCreationAttributes extends Omit<OrderAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-export interface ProductAttributes {
-  sku: string;
-  name: string;
-  description?: string;
-  price: number;
-  quantity: number;
-  imageUrl?: string;
-  category: string;
-  width: number;
-  length: number;
-  isWired: boolean;
-  color?: string;
-  brand?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface ProductCreationAttributes extends Omit<ProductAttributes, 'createdAt' | 'updatedAt'> {}
-
 export interface OrderItemAttributes {
   id: string;
   orderId: string;
@@ -60,11 +41,4 @@ export interface UserAttributes {
   updatedAt?: Date;
 }
 
-export interface UserCreationAttributes extends Omit<UserAttributes, 'id' | 'createdAt' | 'updatedAt' | 'phone'> {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  isAdmin: boolean;
-}
+export interface UserCreationAttributes extends Omit<UserAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
