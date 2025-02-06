@@ -43,7 +43,10 @@ router.post('/login', async (req: AdminLoginRequest, res: Response) => {
     }
 
     // Find admin user
-    const admin = await Admin.findOne({ where: { email } });
+    const admin = await Admin.findOne({ 
+      where: { email },
+      attributes: ['id', 'email', 'password', 'createdAt', 'updatedAt']
+    });
     console.log('Admin found:', admin ? 'yes' : 'no');
 
     if (!admin) {

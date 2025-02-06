@@ -6,8 +6,19 @@ module.exports = {
     try {
       // Check if the Admins table exists
       const tables = await queryInterface.showAllTables();
-      if (!tables.includes('Admins')) {
-        // Create the Admins table if it doesn't exist
+      
+      // Drop and recreate the table to ensure clean state
+      if (tables.includes('Admins')) {
+        // Get existing admin data
+        const admins = await queryInterface.sequelize.query(
+          'SELECT * FROM "Admins";',
+          { type: queryInterface.sequelize.QueryTypes.SELECT }
+        );
+
+        // Drop the table
+        await queryInterface.dropTable('Admins');
+
+        // Create the table with correct schema
         await queryInterface.createTable('Admins', {
           id: {
             type: Sequelize.UUID,
@@ -32,45 +43,44 @@ module.exports = {
             allowNull: false,
           }
         });
-        return;
-      }
 
-      // Get table info
-      const tableInfo = await queryInterface.describeTable('Admins');
-      
-      // If username exists but email doesn't, create email column
-      if (tableInfo.username && !tableInfo.email) {
-        // Add email column
-        await queryInterface.addColumn('Admins', 'email', {
-          type: Sequelize.STRING,
-          allowNull: true, // temporarily allow null
-          unique: true,
-        });
+        // Reinsert the data, mapping username to email if necessary
+        if (admins.length > 0) {
+          const updatedAdmins = admins.map(admin => ({
+            id: admin.id,
+            email: admin.email || admin.username,
+            password: admin.password,
+            createdAt: admin.createdAt,
+            updatedAt: admin.updatedAt
+          }));
 
-        // Copy username data to email
-        await queryInterface.sequelize.query(`
-          UPDATE "Admins"
-          SET email = username
-          WHERE email IS NULL;
-        `);
-
-        // Make email non-nullable
-        await queryInterface.changeColumn('Admins', 'email', {
-          type: Sequelize.STRING,
-          allowNull: false,
-          unique: true,
-        });
-
-        // Remove username column
-        await queryInterface.removeColumn('Admins', 'username');
-      }
-
-      // If neither username nor email exists, add email
-      if (!tableInfo.username && !tableInfo.email) {
-        await queryInterface.addColumn('Admins', 'email', {
-          type: Sequelize.STRING,
-          allowNull: false,
-          unique: true,
+          await queryInterface.bulkInsert('Admins', updatedAdmins);
+        }
+      } else {
+        // Create the table if it doesn't exist
+        await queryInterface.createTable('Admins', {
+          id: {
+            type: Sequelize.UUID,
+            defaultValue: Sequelize.UUIDV4,
+            primaryKey: true,
+          },
+          email: {
+            type: Sequelize.STRING,
+            allowNull: false,
+            unique: true,
+          },
+          password: {
+            type: Sequelize.STRING,
+            allowNull: false,
+          },
+          createdAt: {
+            type: Sequelize.DATE,
+            allowNull: false,
+          },
+          updatedAt: {
+            type: Sequelize.DATE,
+            allowNull: false,
+          }
         });
       }
     } catch (error) {
@@ -80,38 +90,7 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    try {
-      const tableInfo = await queryInterface.describeTable('Admins');
-      
-      // If email exists, revert back to username
-      if (tableInfo.email) {
-        // Add username column
-        await queryInterface.addColumn('Admins', 'username', {
-          type: Sequelize.STRING,
-          allowNull: true,
-          unique: true,
-        });
-
-        // Copy email data to username
-        await queryInterface.sequelize.query(`
-          UPDATE "Admins"
-          SET username = email
-          WHERE username IS NULL;
-        `);
-
-        // Make username non-nullable
-        await queryInterface.changeColumn('Admins', 'username', {
-          type: Sequelize.STRING,
-          allowNull: false,
-          unique: true,
-        });
-
-        // Remove email column
-        await queryInterface.removeColumn('Admins', 'email');
-      }
-    } catch (error) {
-      console.error('Migration rollback error:', error);
-      throw error;
-    }
+    // We don't want to risk data loss in production, so down migration is not supported
+    throw new Error('Down migration is not supported for this migration');
   }
 };
