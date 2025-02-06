@@ -1,7 +1,14 @@
 import { Sequelize } from 'sequelize';
+import { User } from './user.model';
 import { Order } from './order.model';
 import { OrderItem } from './order-item.model';
-import { User } from './user.model';
+import { Admin } from './admin.model';
+import { BaseProduct } from './base-product.model';
+import { RibbonProduct } from './ribbon-product.model';
+import { MumProduct } from './mum-product.model';
+import { BraidProduct } from './braid-product.model';
+import { WreathProduct } from './wreath-product.model';
+import { SeasonalProduct } from './seasonal-product.model';
 import dbConfig from '../config/database';
 
 const env = process.env.NODE_ENV || 'development';
@@ -13,6 +20,13 @@ export class Database {
   public User: typeof User;
   public Order: typeof Order;
   public OrderItem: typeof OrderItem;
+  public Admin: typeof Admin;
+  public BaseProduct: typeof BaseProduct;
+  public RibbonProduct: typeof RibbonProduct;
+  public MumProduct: typeof MumProduct;
+  public BraidProduct: typeof BraidProduct;
+  public WreathProduct: typeof WreathProduct;
+  public SeasonalProduct: typeof SeasonalProduct;
 
   private constructor() {
     try {
@@ -48,6 +62,13 @@ export class Database {
       this.User = User.initModel(this.sequelize);
       this.Order = Order.initModel(this.sequelize);
       this.OrderItem = OrderItem.initModel(this.sequelize);
+      this.Admin = Admin.initModel(this.sequelize);
+      this.BaseProduct = BaseProduct.initModel(this.sequelize);
+      this.RibbonProduct = RibbonProduct.initModel(this.sequelize);
+      this.MumProduct = MumProduct.initModel(this.sequelize);
+      this.BraidProduct = BraidProduct.initModel(this.sequelize);
+      this.WreathProduct = WreathProduct.initModel(this.sequelize);
+      this.SeasonalProduct = SeasonalProduct.initModel(this.sequelize);
 
       // Initialize associations
       this.Order.hasMany(this.OrderItem, {
@@ -119,4 +140,11 @@ export {
   User,
   Order,
   OrderItem,
+  Admin,
+  BaseProduct,
+  RibbonProduct,
+  MumProduct,
+  BraidProduct,
+  WreathProduct,
+  SeasonalProduct,
 };

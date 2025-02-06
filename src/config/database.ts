@@ -1,59 +1,56 @@
-import { Dialect } from 'sequelize';
-import { config } from 'dotenv';
+import { Sequelize } from 'sequelize';
+import { RibbonProduct } from '../models/ribbon-product.model';
+import { MumProduct } from '../models/mum-product.model';
+import { BraidProduct } from '../models/braid-product.model';
+import { WreathProduct } from '../models/wreath-product.model';
+import { SeasonalProduct } from '../models/seasonal-product.model';
 
-config();
+const sequelize = new Sequelize({
+  dialect: 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'budaful_door_designs',
+  logging: false,
+});
 
-interface DatabaseConfig {
-  username: string;
-  password: string;
-  database: string;
-  host: string;
-  dialect: Dialect;
-  dialectOptions?: {
-    ssl?: {
-      require: boolean;
-      rejectUnauthorized: boolean;
-    };
-  };
-}
+// Initialize models
+RibbonProduct.initModel(sequelize);
+MumProduct.initModel(sequelize);
+BraidProduct.initModel(sequelize);
+WreathProduct.initModel(sequelize);
+SeasonalProduct.initModel(sequelize);
 
-interface Config {
-  development: DatabaseConfig;
-  test: DatabaseConfig;
-  production: DatabaseConfig & {
-    use_env_variable: string;
-  };
-}
-
-const dbConfig: Config = {
-  development: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs_dev',
-    host: process.env.DB_HOST || '127.0.0.1',
-    dialect: 'postgres'
-  },
-  test: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs_test',
-    host: process.env.DB_HOST || '127.0.0.1',
-    dialect: 'postgres'
-  },
-  production: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs',
-    host: process.env.DB_HOST || '127.0.0.1',
-    use_env_variable: 'DATABASE_URL',
-    dialect: 'postgres',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    }
-  }
+// Export initialized models
+export const models = {
+  RibbonProduct,
+  MumProduct,
+  BraidProduct,
+  WreathProduct,
+  SeasonalProduct,
 };
 
-export = dbConfig;
+export { sequelize };
+
+// Function to test database connection
+export async function testConnection(): Promise<void> {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    throw error;
+  }
+}
+
+// Function to sync database
+export async function syncDatabase(force = false): Promise<void> {
+  try {
+    await sequelize.sync({ force });
+    console.log('Database synced successfully');
+  } catch (error) {
+    console.error('Error syncing database:', error);
+    throw error;
+  }
+}

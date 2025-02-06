@@ -150,3 +150,101 @@ export const skuParamValidation = [
     .withMessage('Product SKU is required'),
   validate,
 ];
+
+// Product validation middleware
+export const validateProduct = (productType: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { body } = req;
+
+    // Validate base product fields
+    if (!body.name || typeof body.name !== 'string') {
+      return res.status(400).json({ error: 'Name is required and must be a string' });
+    }
+    if (!body.description || typeof body.description !== 'string') {
+      return res.status(400).json({ error: 'Description is required and must be a string' });
+    }
+    if (!body.price || typeof body.price !== 'number' || body.price <= 0) {
+      return res.status(400).json({ error: 'Price is required and must be a positive number' });
+    }
+    if (!body.imageUrl || typeof body.imageUrl !== 'string') {
+      return res.status(400).json({ error: 'Image URL is required and must be a string' });
+    }
+
+    // Validate product-specific fields
+    switch (productType) {
+      case 'ribbon':
+        if (!body.ribbonLength || typeof body.ribbonLength !== 'string') {
+          return res.status(400).json({ error: 'Ribbon length is required and must be a string' });
+        }
+        if (!body.ribbonWidth || typeof body.ribbonWidth !== 'string') {
+          return res.status(400).json({ error: 'Ribbon width is required and must be a string' });
+        }
+        if (!Array.isArray(body.ribbonColors) || body.ribbonColors.length === 0) {
+          return res.status(400).json({ error: 'Ribbon colors are required and must be a non-empty array' });
+        }
+        if (!body.ribbonPattern || typeof body.ribbonPattern !== 'string') {
+          return res.status(400).json({ error: 'Ribbon pattern is required and must be a string' });
+        }
+        break;
+
+      case 'mum':
+        if (!body.size || !['small', 'medium', 'large', 'extra-large'].includes(body.size)) {
+          return res.status(400).json({ error: 'Size must be one of: small, medium, large, extra-large' });
+        }
+        if (!Array.isArray(body.baseColors) || body.baseColors.length === 0) {
+          return res.status(400).json({ error: 'Base colors are required and must be a non-empty array' });
+        }
+        if (!Array.isArray(body.accentColors) || body.accentColors.length === 0) {
+          return res.status(400).json({ error: 'Accent colors are required and must be a non-empty array' });
+        }
+        if (typeof body.hasLights !== 'boolean') {
+          return res.status(400).json({ error: 'Has lights must be a boolean' });
+        }
+        break;
+
+      case 'braid':
+        if (!body.braidLength || typeof body.braidLength !== 'string') {
+          return res.status(400).json({ error: 'Braid length is required and must be a string' });
+        }
+        if (!Array.isArray(body.braidColors) || body.braidColors.length === 0) {
+          return res.status(400).json({ error: 'Braid colors are required and must be a non-empty array' });
+        }
+        if (!body.braidPattern || typeof body.braidPattern !== 'string') {
+          return res.status(400).json({ error: 'Braid pattern is required and must be a string' });
+        }
+        break;
+
+      case 'wreath':
+        if (!body.diameter || typeof body.diameter !== 'string') {
+          return res.status(400).json({ error: 'Diameter is required and must be a string' });
+        }
+        if (!body.baseType || typeof body.baseType !== 'string') {
+          return res.status(400).json({ error: 'Base type is required and must be a string' });
+        }
+        if (!body.season || typeof body.season !== 'string') {
+          return res.status(400).json({ error: 'Season is required and must be a string' });
+        }
+        if (!Array.isArray(body.decorations) || body.decorations.length === 0) {
+          return res.status(400).json({ error: 'Decorations are required and must be a non-empty array' });
+        }
+        break;
+
+      case 'seasonal':
+        if (!body.season || !['spring', 'summer', 'fall', 'winter', 'holiday'].includes(body.season)) {
+          return res.status(400).json({ error: 'Season must be one of: spring, summer, fall, winter, holiday' });
+        }
+        if (!body.type || typeof body.type !== 'string') {
+          return res.status(400).json({ error: 'Type is required and must be a string' });
+        }
+        if (!body.theme || typeof body.theme !== 'string') {
+          return res.status(400).json({ error: 'Theme is required and must be a string' });
+        }
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Invalid product type' });
+    }
+
+    next();
+  };
+};
