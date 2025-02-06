@@ -2,14 +2,21 @@ import { Request, Response, NextFunction } from 'express';
 import { ProductService } from '../services/product.service';
 import { BaseProductAttributes } from '../types/models';
 import { AppError } from '../types/errors';
+import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../types/models';
 
-export class BaseProductController {
+export abstract class BaseProductController {
   protected productType: string;
   protected productService: ProductService;
 
   constructor(productType: string) {
     this.productType = productType;
-    this.productService = ProductService.getInstance();
+    this.productService = new ProductService({
+      ribbon: RibbonProduct,
+      mum: MumProduct,
+      braid: BraidProduct,
+      wreath: WreathProduct,
+      seasonal: SeasonalProduct
+    });
   }
 
   // Get all products of this type
