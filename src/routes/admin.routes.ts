@@ -1,73 +1,55 @@
-import express, { Request, Response, Router } from 'express';
-import bcrypt from 'bcryptjs';
+import { Router, Request, Response, NextFunction } from 'express';
+import { body } from 'express-validator';
+import { Admin, Order, OrderItem } from '../models';
+import { validateRequest } from '../middleware/validation.middleware';
+import { authenticateAdmin } from '../middleware/auth.middleware';
 import jwt from 'jsonwebtoken';
-import { adminAuth } from '../middleware/adminAuth';
-import { Admin } from '../models/admin.model';
-import { Order } from '../models/order.model';
-import { OrderItem } from '../models/order-item.model';
-import { Database } from '../models';
+import bcryptjs from 'bcryptjs';
 
-const router: Router = express.Router();
-const db = Database.getInstance();
+const router = Router();
 
-interface LoginRequest extends Request {
+interface AdminLoginRequest extends Request {
   body: {
-    email: string;
+    username: string;
     password: string;
-  };
+  }
 }
 
 // Admin Login
-router.post('/login', async (req: LoginRequest, res: Response): Promise<void> => {
+router.post('/login', async (req: AdminLoginRequest, res: Response) => {
   try {
-    console.log('Login attempt:', {
-      email: req.body.email,
-      headers: req.headers,
-      body: req.body
-    });
+    const { username, password } = req.body;
 
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      console.log('Missing credentials');
-      res.status(400).json({ message: 'Email and password are required' });
+    if (!username || !password) {
+      res.status(400).json({ message: 'Username and password are required' });
       return;
     }
 
-    // Find admin user
-    const admin = await Admin.findOne({ where: { email } });
-    console.log('Admin found:', admin ? 'yes' : 'no');
+    const admin = await Admin.findOne({ where: { username } });
 
     if (!admin) {
-      console.log('Admin not found');
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
-    // Check password
-    const validPassword = await bcrypt.compare(password, admin.password);
-    console.log('Password valid:', validPassword);
+    const isPasswordValid = await bcryptjs.compare(password, admin.get('password'));
 
-    if (!validPassword) {
-      console.log('Invalid password');
+    if (!isPasswordValid) {
       res.status(401).json({ message: 'Invalid credentials' });
       return;
     }
 
-    // Generate JWT token
     const token = jwt.sign(
-      { id: admin.id, email: admin.email },
+      { id: admin.get('id'), username: admin.get('username'), role: 'admin' },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '1d' }
     );
 
-    console.log('Login successful');
     res.json({
-      message: 'Login successful',
       token,
       admin: {
-        id: admin.id,
-        email: admin.email
+        id: admin.get('id'),
+        username: admin.get('username')
       }
     });
   } catch (error) {
@@ -76,55 +58,117 @@ router.post('/login', async (req: LoginRequest, res: Response): Promise<void> =>
   }
 });
 
-// Order Management Routes
-router.get('/orders', adminAuth, async (req: Request, res: Response): Promise<void> => {
+// Get all admins
+router.get('/', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const orders = await Order.findAll({
-      include: [OrderItem],
-      order: [['createdAt', 'DESC']]
+    const admins = await Admin.findAll({
+      attributes: ['id', 'username', 'createdAt', 'updatedAt']
     });
-
-    res.json(orders);
+    res.json(admins);
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    res.status(500).json({ message: 'Error fetching orders' });
+    next(error);
   }
 });
 
-router.get('/orders/:id', adminAuth, async (req: Request, res: Response): Promise<void> => {
+// Create new admin
+router.post('/', authenticateAdmin, [
+  body('username').notEmpty().withMessage('Username is required'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/\d/)
+    .withMessage('Password must contain a number')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain an uppercase letter')
+], validateRequest, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { username, password } = req.body;
+
+    const existingAdmin = await Admin.findOne({ where: { username } });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Admin already exists' });
+    }
+
+    const hashedPassword = await bcryptjs.hash(password, 10);
+
+    const admin = await Admin.create({
+      username,
+      password: hashedPassword
+    });
+
+    const adminResponse = {
+      id: admin.get('id'),
+      username: admin.get('username'),
+      createdAt: admin.get('createdAt'),
+      updatedAt: admin.get('updatedAt')
+    };
+
+    res.status(201).json(adminResponse);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete admin
+router.delete('/:id', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const admin = await Admin.findByPk(id);
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    await admin.destroy();
+    res.json({ message: 'Admin deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Order Management Routes
+router.get('/orders', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orders = await Order.findAll({
+      include: [{ model: OrderItem, as: 'items' }],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(orders);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/orders/:id', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const order = await Order.findByPk(req.params.id, {
-      include: [OrderItem]
+      include: [{ model: OrderItem, as: 'items' }]
     });
 
     if (!order) {
-      res.status(404).json({ message: 'Order not found' });
-      return;
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     res.json(order);
   } catch (error) {
-    console.error('Error fetching order:', error);
-    res.status(500).json({ message: 'Error fetching order' });
+    next(error);
   }
 });
 
-router.patch('/orders/:id/status', adminAuth, async (req: Request, res: Response): Promise<void> => {
+router.patch('/orders/:id/status', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
     const order = await Order.findByPk(id);
     if (!order) {
-      res.status(404).json({ message: 'Order not found' });
-      return;
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     await order.update({ status });
-    res.json({ message: 'Order status updated successfully', order });
+    res.json({ message: 'Order status updated successfully' });
   } catch (error) {
-    console.error('Error updating order status:', error);
-    res.status(500).json({ message: 'Error updating order status' });
+    next(error);
   }
 });
 

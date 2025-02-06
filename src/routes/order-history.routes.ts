@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { OrderHistoryController } from '../controllers/order-history.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticateUser } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticateUser);
 
 // Get paginated order history
 router.get('/', OrderHistoryController.getOrderHistory);
