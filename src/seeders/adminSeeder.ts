@@ -3,12 +3,12 @@ import { Admin } from '../models/admin.model';
 
 export async function seedAdmin() {
   try {
-    const adminUsername = process.env.ADMIN_EMAIL?.split('@')[0] || 'admin';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@budafuldoordecor.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({
-      where: { username: adminUsername }
+      where: { email: adminEmail }
     });
 
     if (!existingAdmin) {
@@ -17,7 +17,7 @@ export async function seedAdmin() {
 
       // Create admin user
       await Admin.create({
-        username: adminUsername,
+        email: adminEmail,
         password: hashedPassword
       });
 

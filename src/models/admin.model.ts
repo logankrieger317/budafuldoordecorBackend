@@ -3,9 +3,8 @@ import { sequelize } from '../config/database';
 
 export class Admin extends Model {
   declare id: string;
-  declare username: string;
+  declare email: string;
   declare password: string;
-  declare role: 'admin';
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -17,20 +16,18 @@ Admin.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    username: {
+    email: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
+      validate: {
+        isEmail: true
+      }
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    role: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'admin',
-    },
+    }
   },
   {
     sequelize,
