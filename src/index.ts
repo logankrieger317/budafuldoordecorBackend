@@ -2,56 +2,22 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
-import { Database } from './models';
+import { sequelize } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { seedAdmin } from './seeders/adminSeeder';
+import productRoutes from './routes/product.routes';
+import authRoutes from './routes/auth.routes';
+import orderRoutes from './routes/order.routes';
+import adminRoutes from './routes/admin.routes';
 
 // Load environment variables
 config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const db = Database.getInstance();
-
-// Test database connection and initialize
-async function initializeDatabase() {
-  try {
-    // Test the connection
-    console.log('Testing database connection...');
-    await db.sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
-    
-    // First, ensure the database is synced with the current models
-    console.log('Syncing database...');
-    await db.sequelize.sync({ force: false, alter: false });
-    console.log('Database sync completed');
-    
-    // Always seed admin user for initial setup
-    console.log('Ensuring admin user exists...');
-    await seedAdmin();
-    
-    // Database is ready
-    console.log('Database is ready');
-  } catch (error) {
-    console.error('Database initialization failed:', error);
-    process.exit(1);
-  }
-}
-
-// Initialize database
-initializeDatabase();
-
-// Configure CORS
-const corsOptions = {
-  origin: ['https://budafuldoordecor.com', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 86400 // 24 hours
-};
 
 // Middleware
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
@@ -59,7 +25,7 @@ app.use(express.json());
 app.get('/health', async (req, res) => {
   try {
     // Test database connection
-    await db.sequelize.authenticate();
+    await sequelize.authenticate();
     
     // Quick check of essential services
     const healthcheck = {
@@ -96,10 +62,7 @@ app.get('/health', async (req, res) => {
 });
 
 // Routes
-import orderRoutes from './routes/order.routes';
-import adminRoutes from './routes/admin.routes';
-import authRoutes from './routes/auth.routes';
-
+app.use('/api', productRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
@@ -107,7 +70,27 @@ app.use('/api/admin', adminRoutes);
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+async function startServer() {
+  try {
+    // Test database connection
+    await sequelize.authenticate();
+    console.log('Database connection successful');
+
+    // Sync database models
+    await sequelize.sync();
+    console.log('Database models synchronized');
+
+    // Seed admin user if needed
+    await seedAdmin();
+    console.log('Admin seeding completed');
+
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

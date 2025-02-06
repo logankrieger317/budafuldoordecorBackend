@@ -1,122 +1,91 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db } from '../models';
-import { AppError } from '../utils/appError';
+import { Admin } from '../models';
+import { AuthRequest } from '../middleware/auth.middleware';
 
-export const authController = {
-  async register(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { email, password, firstName, lastName, phone } = req.body;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-      // Check if user already exists
-      const existingUser = await db.User.findOne({ where: { email } });
-      if (existingUser) {
-        throw new AppError('Email already registered', 400);
-      }
-
-      // Create new user
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await db.User.create({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        phone,
-        isAdmin: false // Default to false for new users
-      });
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          id: user.id, 
-          email: user.email,
-          isAdmin: user.isAdmin
-        },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      );
-
-      // Don't send password in response
-      const { password: _, ...userWithoutPassword } = user.toJSON();
-
-      res.status(201).json({
-        status: 'success',
-        token,
-        data: {
-          user: userWithoutPassword
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
+export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password } = req.body;
+      const { username, password } = req.body;
 
-      // Find user
-      const user = await db.User.findOne({ where: { email } });
-      if (!user) {
-        throw new AppError('Invalid email or password', 401);
+      const admin = await Admin.findOne({ where: { username } });
+      if (!admin) {
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Check password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, admin.get('password'));
       if (!isPasswordValid) {
-        throw new AppError('Invalid email or password', 401);
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Generate JWT token
       const token = jwt.sign(
         { 
-          id: user.id, 
-          email: user.email,
-          isAdmin: user.isAdmin
+          id: admin.get('id'),
+          username: admin.get('username'),
+          role: 'admin'
         },
-        process.env.JWT_SECRET || 'your-secret-key',
+        JWT_SECRET,
         { expiresIn: '24h' }
       );
 
-      // Don't send password in response
-      const { password: _, ...userWithoutPassword } = user.toJSON();
-
-      res.json({
-        status: 'success',
-        token,
-        data: {
-          user: userWithoutPassword
-        }
-      });
+      res.json({ token });
     } catch (error) {
       next(error);
     }
-  },
+  }
 
-  async getProfile(req: Request, res: Response, next: NextFunction) {
+  async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new AppError('Not authenticated', 401);
+      const { username, password } = req.body;
+
+      const existingAdmin = await Admin.findOne({ where: { username } });
+      if (existingAdmin) {
+        return res.status(400).json({ message: 'Username already exists' });
       }
 
-      const user = await db.User.findByPk(userId);
-      if (!user) {
-        throw new AppError('User not found', 404);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const admin = await Admin.create({
+        username,
+        password: hashedPassword
+      });
+
+      const token = jwt.sign(
+        { 
+          id: admin.get('id'),
+          username: admin.get('username'),
+          role: 'admin'
+        },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      res.status(201).json({ token });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getProfile(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      // Don't send password in response
-      const { password: _, ...userWithoutPassword } = user.toJSON();
+      const admin = await Admin.findByPk(req.user.id);
+      if (!admin) {
+        return res.status(404).json({ message: 'Admin not found' });
+      }
 
       res.json({
-        status: 'success',
-        data: {
-          user: userWithoutPassword
-        }
+        id: admin.get('id'),
+        username: admin.get('username'),
+        role: req.user.role
       });
     } catch (error) {
       next(error);
     }
   }
-};
+}

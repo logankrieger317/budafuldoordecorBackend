@@ -1,34 +1,35 @@
 import { Router } from 'express';
-import { orderController } from '../controllers/order.controller';
-import { body, param } from 'express-validator';
-import { validateRequest } from '../middleware/validateRequest';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { OrderController } from '../controllers/order.controller';
+import { authenticateUser } from '../middleware/auth.middleware';
+import { body, ValidationChain } from 'express-validator';
+import { validateRequest } from '../middleware/validation.middleware';
 
 const router = Router();
+const orderController = new OrderController();
 
-const createOrderValidation = [
+const createOrderValidation: ValidationChain[] = [
   body('customerEmail').isEmail().withMessage('Valid email is required'),
   body('customerName').notEmpty().withMessage('Customer name is required'),
   body('shippingAddress').notEmpty().withMessage('Shipping address is required'),
   body('billingAddress').notEmpty().withMessage('Billing address is required'),
-  body('items').isArray({ min: 1 }).withMessage('At least one item is required'),
-  body('items.*.productSku').notEmpty().withMessage('Product SKU is required'),
+  body('totalAmount').isNumeric().withMessage('Total amount must be a number'),
+  body('items').isArray().withMessage('Items must be an array'),
+  body('items.*.sku').notEmpty().withMessage('Product SKU is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('items.*.price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
-  body('phone').optional().matches(/^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/).withMessage('Invalid phone number format'),
-  body('notes').optional().isString().withMessage('Notes must be a string')
+  body('items.*.price').isNumeric().withMessage('Price must be a number'),
+  body('items.*.productType').notEmpty().withMessage('Product type is required')
 ];
 
-const updateOrderStatusValidation = [
+const updateOrderStatusValidation: ValidationChain[] = [
   body('status')
     .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
     .withMessage('Invalid order status')
 ];
 
-// Routes - specific routes first
-router.post('/', createOrderValidation, validateRequest, orderController.createOrder);
-router.get('/customer/:customerEmail', authenticateToken, orderController.getCustomerOrders);
-router.get('/:orderId', authenticateToken, orderController.getOrder);
-router.patch('/:orderId/status', updateOrderStatusValidation, authenticateToken, validateRequest, orderController.updateOrderStatus);
+router.post('/', createOrderValidation, validateRequest, authenticateUser, orderController.createOrder.bind(orderController));
+router.get('/', authenticateUser, orderController.getOrders.bind(orderController));
+router.get('/:id', authenticateUser, orderController.getOrder.bind(orderController));
+router.get('/customer/:customerEmail', authenticateUser, orderController.getCustomerOrders.bind(orderController));
+router.patch('/:id/status', updateOrderStatusValidation, validateRequest, authenticateUser, orderController.updateOrderStatus.bind(orderController));
 
 export default router;

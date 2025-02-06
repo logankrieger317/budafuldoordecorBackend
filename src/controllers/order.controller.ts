@@ -1,128 +1,111 @@
 import { Request, Response, NextFunction } from 'express';
-import { Database } from '../models';
-import { AppError } from '../types/errors';
-import { Transaction } from 'sequelize';
+import { sequelize } from '../config/database';
+import { Order, OrderItem } from '../models';
+import { AuthRequest } from '../middleware/auth.middleware';
 
-const db = Database.getInstance();
-
-export const orderController = {
-  async createOrder(req: Request, res: Response, next: NextFunction) {
-    console.log('Received order data:', req.body);
-    
-    const {
-      customerEmail,
-      customerName,
-      shippingAddress,
-      billingAddress,
-      items,
-      phone,
-      notes,
-      totalAmount,
-      userId
-    } = req.body;
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return next(new AppError('Order must contain at least one item', 400));
-    }
-
-    let transaction: Transaction | undefined;
+export class OrderController {
+  async createOrder(req: AuthRequest, res: Response, next: NextFunction) {
+    const t = await sequelize.transaction();
 
     try {
-      transaction = await db.sequelize.transaction();
+      if (!req.user) {
+        await t.rollback();
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
 
-      // Create the order
-      const order = await db.Order.create({
+      const { items, shippingAddress, billingAddress, customerName, customerEmail, totalAmount } = req.body;
+
+      const order = await Order.create({
+        userId: req.user.id,
         customerEmail,
         customerName,
         shippingAddress,
         billingAddress,
-        phone,
-        notes,
         totalAmount,
-        userId,
         status: 'pending',
         paymentStatus: 'pending'
-      }, { transaction });
+      }, { transaction: t });
 
-      // Create order items
-      const orderItems = items.map(item => ({
-        orderId: order.id,
-        productSku: item.productSku,
-        quantity: item.quantity,
-        priceAtTime: item.price
-      }));
+      await Promise.all(
+        items.map(async (item: any) => {
+          return OrderItem.create({
+            orderId: order.get('id'),
+            productSku: item.sku,
+            quantity: item.quantity,
+            priceAtTime: item.price
+          }, { transaction: t });
+        })
+      );
 
-      await db.OrderItem.bulkCreate(orderItems, { transaction });
-
-      await transaction.commit();
-      console.log('Order created successfully:', order.toJSON());
-
-      res.status(201).json({
-        message: 'Order created successfully',
-        orderId: order.id
-      });
+      await t.commit();
+      res.status(201).json(order);
     } catch (error) {
-      if (transaction) await transaction.rollback();
-      next(error);
-    }
-  },
-
-  async getOrder(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { orderId } = req.params;
-
-      const order = await db.Order.findByPk(orderId, {
-        include: [{
-          model: db.OrderItem,
-          as: 'items'
-        }]
-      });
-
-      if (!order) {
-        return next(new AppError('Order not found', 404));
-      }
-
-      res.json(order);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { email } = req.params;
-
-      const orders = await db.Order.findAll({
-        where: { customerEmail: email },
-        include: [{
-          model: db.OrderItem,
-          as: 'items'
-        }],
-        order: [['createdAt', 'DESC']]
-      });
-
-      res.json(orders);
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { orderId } = req.params;
-      const { status } = req.body;
-
-      const order = await db.Order.findByPk(orderId);
-      
-      if (!order) {
-        return next(new AppError('Order not found', 404));
-      }
-
-      await order.update({ status });
-
-      res.json({ message: 'Order status updated successfully' });
-    } catch (error) {
+      await t.rollback();
       next(error);
     }
   }
-};
+
+  async getOrders(req: AuthRequest, res: Response) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const orders = await Order.findAll({
+      where: { userId: req.user.id },
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+
+    res.json(orders);
+  }
+
+  async getOrder(req: AuthRequest, res: Response) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const order = await Order.findOne({
+      where: { 
+        id: req.params.id,
+        userId: req.user.id
+      },
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    res.json(order);
+  }
+
+  async getCustomerOrders(req: AuthRequest, res: Response) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { customerEmail } = req.params;
+    const orders = await Order.findAll({
+      where: { customerEmail },
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+
+    res.json(orders);
+  }
+
+  async updateOrderStatus(req: AuthRequest, res: Response) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findByPk(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    await order.update({ status });
+    res.json({ message: 'Order status updated successfully' });
+  }
+}

@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { authController } from '../controllers/auth.controller';
-import { authenticateToken } from '../middleware/auth.middleware';
-import { validateLogin, validateRegistration } from '../middleware/validation.middleware';
+import { AuthController } from '../controllers/auth.controller';
+import { authenticateUser } from '../middleware/auth.middleware';
 
 const router = Router();
+const authController = new AuthController();
 
-// Auth routes
-router.post('/register', validateRegistration, authController.register);
-router.post('/login', validateLogin, authController.login);
-router.get('/profile', authenticateToken, authController.getProfile);
+router.post('/login', authController.login.bind(authController));
+router.post('/register', authController.register.bind(authController));
+router.get('/profile', authenticateUser, authController.getProfile.bind(authController));
 
 export default router;
