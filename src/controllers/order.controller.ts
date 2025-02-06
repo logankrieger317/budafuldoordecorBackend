@@ -30,190 +30,97 @@ export const orderController = {
     try {
       transaction = await db.sequelize.transaction();
 
-      // Calculate total amount and verify product availability
-      let calculatedTotal = 0;
-      for (const item of items) {
-        console.log('Processing item:', item);
-        const product = await db.Product.findByPk(String(item.productSku), { transaction });
+      // Create the order
+      const order = await db.Order.create({
+        customerEmail,
+        customerName,
+        shippingAddress,
+        billingAddress,
+        phone,
+        notes,
+        totalAmount,
+        userId,
+        status: 'pending',
+        paymentStatus: 'pending'
+      }, { transaction });
 
-        if (!product) {
-          throw new AppError(`Product with SKU ${item.productSku} not found`, 404);
-        }
+      // Create order items
+      const orderItems = items.map(item => ({
+        orderId: order.id,
+        productSku: item.productSku,
+        quantity: item.quantity,
+        priceAtTime: item.price
+      }));
 
-        console.log('Found product:', product.toJSON());
-
-        if (product.quantity < Number(item.quantity)) {
-          throw new AppError(`Insufficient quantity for product ${product.name}`, 400);
-        }
-
-        calculatedTotal += Number(product.price) * Number(item.quantity);
-
-        // Update product quantity
-        await product.update(
-          { quantity: product.quantity - Number(item.quantity) },
-          { transaction }
-        );
-      }
-
-      console.log('Calculated total:', calculatedTotal);
-      console.log('Received totalAmount:', totalAmount);
-
-      // Verify the totals match (within a small margin for floating point precision)
-      const receivedTotal = Number(totalAmount);
-      if (Math.abs(calculatedTotal - receivedTotal) > 0.01) {
-        throw new AppError('Order total mismatch', 400);
-      }
-
-      // Create order with number values
-      const order = await db.Order.create(
-        {
-          customerEmail,
-          customerName,
-          shippingAddress,
-          billingAddress,
-          totalAmount: calculatedTotal,
-          status: 'pending',
-          paymentStatus: 'pending',
-          phone,
-          notes,
-          userId
-        },
-        { transaction }
-      );
-
-      // Create order items with number values
-      const orderItems = await Promise.all(
-        items.map(item =>
-          db.OrderItem.create(
-            {
-              orderId: order.id,
-              productSku: String(item.productSku),
-              quantity: Number(item.quantity),
-              priceAtTime: Number(item.price)
-            },
-            { transaction }
-          )
-        )
-      );
+      await db.OrderItem.bulkCreate(orderItems, { transaction });
 
       await transaction.commit();
-
-      // Format numbers as strings only in the response
-      const orderJSON = order.toJSON();
-      const formattedOrder = {
-        ...orderJSON,
-        totalAmount: Number(orderJSON.totalAmount).toFixed(2),
-        items: orderItems.map(item => ({
-          ...item.toJSON(),
-          priceAtTime: Number(item.priceAtTime).toFixed(2)
-        }))
-      };
+      console.log('Order created successfully:', order.toJSON());
 
       res.status(201).json({
-        status: 'success',
-        data: {
-          order: formattedOrder
-        }
+        message: 'Order created successfully',
+        orderId: order.id
       });
     } catch (error) {
       if (transaction) await transaction.rollback();
-      console.error('Error creating order:', error);
-      if (error instanceof AppError) {
-        next(error);
-      } else if (error instanceof Error) {
-        console.error('Stack trace:', error.stack);
-        next(new AppError(error.message || 'Internal server error', 500));
-      } else {
-        next(new AppError('Internal server error', 500));
-      }
+      next(error);
     }
   },
 
   async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const orderId = req.params.orderId;
-      console.log('Fetching order details for ID:', orderId);
+      const { orderId } = req.params;
 
-      if (!orderId) {
-        throw new AppError('Order ID is required', 400);
-      }
-
-      const order = await db.Order.findOne({
-        where: { id: orderId },
+      const order = await db.Order.findByPk(orderId, {
         include: [{
           model: db.OrderItem,
-          as: 'items',
-          include: [{
-            model: db.Product,
-            attributes: ['name', 'price', 'imageUrl']
-          }]
+          as: 'items'
         }]
       });
 
-      console.log('Found order:', order ? 'yes' : 'no');
-
       if (!order) {
-        throw new AppError('Order not found', 404);
+        return next(new AppError('Order not found', 404));
       }
 
-      res.json({
-        status: 'success',
-        data: { order }
-      });
+      res.json(order);
     } catch (error) {
-      console.error('Error fetching order:', error);
       next(error);
     }
   },
 
   async getCustomerOrders(req: Request, res: Response, next: NextFunction) {
     try {
-      const customerEmail = req.params.customerEmail;
-      console.log('Fetching orders for customer:', customerEmail);
-      
-      if (!customerEmail) {
-        throw new AppError('Customer email is required', 400);
-      }
+      const { email } = req.params;
 
       const orders = await db.Order.findAll({
-        where: { customerEmail },
+        where: { customerEmail: email },
         include: [{
           model: db.OrderItem,
-          as: 'items',
-          include: [{
-            model: db.Product,
-            attributes: ['name', 'price', 'imageUrl']
-          }]
+          as: 'items'
         }],
-        order: [['createdAt', 'DESC']] // Show newest orders first
+        order: [['createdAt', 'DESC']]
       });
 
-      console.log('Found orders:', orders.length);
-      
-      res.json({
-        status: 'success',
-        data: { orders }
-      });
+      res.json(orders);
     } catch (error) {
-      console.error('Error fetching customer orders:', error);
       next(error);
     }
   },
 
   async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await db.Order.findByPk(String(req.params.orderId));
+      const { orderId } = req.params;
+      const { status } = req.body;
 
+      const order = await db.Order.findByPk(orderId);
+      
       if (!order) {
         return next(new AppError('Order not found', 404));
       }
 
-      await order.update({ status: req.body.status });
+      await order.update({ status });
 
-      res.json({
-        status: 'success',
-        data: { order }
-      });
+      res.json({ message: 'Order status updated successfully' });
     } catch (error) {
       next(error);
     }

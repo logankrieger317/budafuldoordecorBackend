@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Order, OrderItem, Product } from '../models';
+import { Order, OrderItem } from '../models';
 
 export class OrderHistoryController {
   static async getOrderHistory(req: Request, res: Response) {
@@ -13,11 +13,7 @@ export class OrderHistoryController {
         where: { userId },
         include: [{
           model: OrderItem,
-          as: 'items',
-          include: [{
-            model: Product,
-            attributes: ['sku', 'name', 'imageUrl', 'price']
-          }]
+          as: 'items'
         }],
         order: [['createdAt', 'DESC']],
         limit,
@@ -49,15 +45,11 @@ export class OrderHistoryController {
       const order = await Order.findOne({
         where: {
           id: orderId,
-          userId, // Ensure the order belongs to the user
+          userId,
         },
         include: [{
           model: OrderItem,
-          as: 'items',
-          include: [{
-            model: Product,
-            attributes: ['sku', 'name', 'imageUrl', 'price', 'description']
-          }]
+          as: 'items'
         }],
       });
 
@@ -81,11 +73,7 @@ export class OrderHistoryController {
         where: { userId },
         include: [{
           model: OrderItem,
-          as: 'items',
-          include: [{
-            model: Product,
-            attributes: ['sku', 'name', 'imageUrl', 'price']
-          }]
+          as: 'items'
         }],
         order: [['createdAt', 'DESC']],
         limit,

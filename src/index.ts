@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import { config } from 'dotenv';
 import { Database } from './models';
 import { errorHandler } from './middleware/errorHandler';
-import { seedProducts } from './seeders/productSeeder';
 import { seedAdmin } from './seeders/adminSeeder';
 
 // Load environment variables
@@ -31,12 +30,8 @@ async function initializeDatabase() {
     console.log('Ensuring admin user exists...');
     await seedAdmin();
     
-    // Finally seed products if enabled
-    if (process.env.SEED_DATABASE === 'true') {
-      console.log('Seeding products...');
-      await seedProducts();
-      console.log('Products seeded successfully.');
-    }
+    // Database is ready
+    console.log('Database is ready');
   } catch (error) {
     console.error('Database initialization failed:', error);
     process.exit(1);
@@ -101,15 +96,13 @@ app.get('/health', async (req, res) => {
 });
 
 // Routes
-import productRoutes from './routes/product.routes';
 import orderRoutes from './routes/order.routes';
 import adminRoutes from './routes/admin.routes';
 import authRoutes from './routes/auth.routes';
 
-app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
