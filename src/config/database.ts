@@ -5,15 +5,31 @@ import { BraidProduct } from '../models/braid-product.model';
 import { WreathProduct } from '../models/wreath-product.model';
 import { SeasonalProduct } from '../models/seasonal-product.model';
 
-const sequelize = new Sequelize({
-  dialect: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'budaful_door_designs',
-  logging: false,
-});
+let sequelize: Sequelize;
+
+// Check if we have a DATABASE_URL (Railway) or individual connection params
+if (process.env.DATABASE_URL) {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
+    logging: false
+  });
+} else {
+  sequelize = new Sequelize({
+    dialect: 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'budaful_door_designs',
+    logging: false,
+  });
+}
 
 // Initialize models
 RibbonProduct.initModel(sequelize);

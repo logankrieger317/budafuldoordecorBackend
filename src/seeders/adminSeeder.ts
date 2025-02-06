@@ -3,21 +3,22 @@ import { Admin } from '../models/admin.model';
 
 export async function seedAdmin() {
   try {
+    const adminUsername = process.env.ADMIN_EMAIL?.split('@')[0] || 'admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({
-      where: { email: 'admin@budafuldoordecor.com' }
+      where: { username: adminUsername }
     });
 
     if (!existingAdmin) {
       // Hash the password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('admin123', salt);
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
       // Create admin user
       await Admin.create({
-        email: 'admin@budafuldoordecor.com',
-        password: hashedPassword,
-        name: 'Admin User'
+        username: adminUsername,
+        password: hashedPassword
       });
 
       console.log('Admin user created successfully');
