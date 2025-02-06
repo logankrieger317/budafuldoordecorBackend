@@ -1,4 +1,4 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
 
 export class Admin extends Model {
@@ -32,7 +32,7 @@ Admin.init(
   {
     sequelize,
     modelName: 'Admin',
-    tableName: 'admins',
+    tableName: 'Admins',
     timestamps: true,
   }
 );
