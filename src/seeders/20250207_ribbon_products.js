@@ -17,7 +17,7 @@ module.exports = {
     // Seed the products
     await queryInterface.bulkInsert('ribbon_products', [
       {
-        id: Sequelize.literal('uuid_generate_v4()'),
+        id: Sequelize.UUIDV4,
         name: 'Classic Holiday Ribbon',
         description: 'Beautiful red and green plaid ribbon perfect for holiday wreaths and decorations.',
         price: 12.99,
@@ -31,7 +31,7 @@ module.exports = {
         updatedAt: new Date()
       },
       {
-        id: Sequelize.literal('uuid_generate_v4()'),
+        id: Sequelize.UUIDV4,
         name: 'Spring Floral Ribbon',
         description: 'Delicate floral pattern ribbon in pastel colors, perfect for spring and summer wreaths.',
         price: 14.99,
@@ -45,7 +45,7 @@ module.exports = {
         updatedAt: new Date()
       },
       {
-        id: Sequelize.literal('uuid_generate_v4()'),
+        id: Sequelize.UUIDV4,
         name: 'Rustic Burlap Ribbon',
         description: 'Natural burlap ribbon with delicate lace trim, perfect for rustic and farmhouse style decorations.',
         price: 16.99,
