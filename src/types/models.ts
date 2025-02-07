@@ -65,7 +65,6 @@ export interface RibbonProductAttributes extends BaseProductAttributes {
   ribbonWidth: string;
   ribbonColors: string[];
   ribbonPattern: string;
-  quantity: number; 
 }
 
 export interface RibbonProductCreationAttributes extends Omit<RibbonProductAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -76,7 +75,6 @@ export interface MumProductAttributes extends BaseProductAttributes {
   baseColors: string[];
   accentColors: string[];
   hasLights: boolean;
-  quantity: number;
 }
 
 export interface MumProductCreationAttributes extends Omit<MumProductAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -86,7 +84,6 @@ export interface BraidProductAttributes extends BaseProductAttributes {
   braidLength: string;
   braidColors: string[];
   braidPattern: string;
-  quantity: number;
 }
 
 export interface BraidProductCreationAttributes extends Omit<BraidProductAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -97,7 +94,6 @@ export interface WreathProductAttributes extends BaseProductAttributes {
   baseType: string;
   season: string;
   decorations: string[];
-  quantity: number;
 }
 
 export interface WreathProductCreationAttributes extends Omit<WreathProductAttributes, 'id' | 'createdAt' | 'updatedAt'> {}

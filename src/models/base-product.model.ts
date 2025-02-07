@@ -1,17 +1,18 @@
 import { Model, DataTypes, Sequelize } from 'sequelize';
 import { BaseProductAttributes, BaseProductCreationAttributes } from '../types/models';
 
-export class BaseProduct extends Model<BaseProductAttributes, BaseProductCreationAttributes> implements BaseProductAttributes {
-  public id!: string;
-  public name!: string;
-  public description!: string;
-  public price!: number;
-  public imageUrl!: string;
-  public isAvailable!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+export class BaseProduct extends Model<BaseProductAttributes> implements BaseProductAttributes {
+  declare id: string;
+  declare name: string;
+  declare description: string;
+  declare price: number;
+  declare imageUrl: string;
+  declare quantity: number;
+  declare isAvailable: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
-  public static initModel(sequelize: Sequelize): void {
+  static initModel(sequelize: Sequelize): typeof BaseProduct {
     BaseProduct.init(
       {
         id: {
@@ -35,6 +36,11 @@ export class BaseProduct extends Model<BaseProductAttributes, BaseProductCreatio
           type: DataTypes.STRING,
           allowNull: false,
         },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
+        },
         isAvailable: {
           type: DataTypes.BOOLEAN,
           allowNull: false,
@@ -43,10 +49,9 @@ export class BaseProduct extends Model<BaseProductAttributes, BaseProductCreatio
       },
       {
         sequelize,
-        modelName: 'BaseProduct',
-        tableName: 'base_products',
-        timestamps: true,
+        tableName: 'products',
       }
     );
+    return BaseProduct;
   }
 }
