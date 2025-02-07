@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import { config } from 'dotenv';
 import { sequelize } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
-import { seedAdmin } from './seeders/adminSeeder';
 import productRoutes from './routes/product.routes';
 import authRoutes from './routes/auth.routes';
 import orderRoutes from './routes/order.routes';
@@ -79,10 +78,6 @@ async function startServer() {
     // Sync database models
     await sequelize.sync();
     console.log('Database models synchronized');
-
-    // Seed admin user if needed
-    await seedAdmin();
-    console.log('Admin seeding completed');
 
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
