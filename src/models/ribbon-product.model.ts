@@ -12,6 +12,7 @@ export class RibbonProduct extends Model<RibbonProductAttributes, RibbonProductC
   declare ribbonWidth: string;
   declare ribbonColors: string[];
   declare ribbonPattern: string;
+  declare quantity: number;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
@@ -59,6 +60,11 @@ export class RibbonProduct extends Model<RibbonProductAttributes, RibbonProductC
         ribbonPattern: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
         },
       },
       {

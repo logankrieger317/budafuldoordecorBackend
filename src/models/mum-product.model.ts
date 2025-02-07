@@ -7,6 +7,7 @@ export class MumProduct extends Model<MumProductAttributes, MumProductCreationAt
   declare description: string;
   declare price: number;
   declare imageUrl: string;
+  declare quantity: number;
   declare isAvailable: boolean;
   declare size: 'small' | 'medium' | 'large' | 'extra-large';
   declare baseColors: string[];
@@ -38,6 +39,11 @@ export class MumProduct extends Model<MumProductAttributes, MumProductCreationAt
         imageUrl: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
         },
         isAvailable: {
           type: DataTypes.BOOLEAN,

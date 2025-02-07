@@ -7,6 +7,7 @@ export class WreathProduct extends Model<WreathProductAttributes, WreathProductC
   declare description: string;
   declare price: number;
   declare imageUrl: string;
+  declare quantity: number;
   declare isAvailable: boolean;
   declare diameter: string;
   declare baseType: string;
@@ -38,6 +39,11 @@ export class WreathProduct extends Model<WreathProductAttributes, WreathProductC
         imageUrl: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
         },
         isAvailable: {
           type: DataTypes.BOOLEAN,

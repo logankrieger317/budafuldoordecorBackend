@@ -7,6 +7,7 @@ export class BraidProduct extends Model<BraidProductAttributes, BraidProductCrea
   declare description: string;
   declare price: number;
   declare imageUrl: string;
+  declare quantity: number;
   declare isAvailable: boolean;
   declare braidLength: string;
   declare braidColors: string[];
@@ -37,6 +38,11 @@ export class BraidProduct extends Model<BraidProductAttributes, BraidProductCrea
         imageUrl: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
         },
         isAvailable: {
           type: DataTypes.BOOLEAN,

@@ -7,6 +7,7 @@ export class SeasonalProduct extends Model<SeasonalProductAttributes, SeasonalPr
   declare description: string;
   declare price: number;
   declare imageUrl: string;
+  declare quantity: number;
   declare isAvailable: boolean;
   declare season: 'spring' | 'summer' | 'fall' | 'winter' | 'holiday';
   declare type: string;
@@ -37,6 +38,11 @@ export class SeasonalProduct extends Model<SeasonalProductAttributes, SeasonalPr
         imageUrl: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        quantity: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
         },
         isAvailable: {
           type: DataTypes.BOOLEAN,
