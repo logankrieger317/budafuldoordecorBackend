@@ -1,10 +1,5 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
-import { RibbonProduct } from '../models/ribbon-product.model';
-import { MumProduct } from '../models/mum-product.model';
-import { BraidProduct } from '../models/braid-product.model';
-import { WreathProduct } from '../models/wreath-product.model';
-import { SeasonalProduct } from '../models/seasonal-product.model';
 
 dotenv.config();
 
@@ -12,6 +7,7 @@ const env = process.env.NODE_ENV || 'development';
 let sequelize: Sequelize;
 
 if (process.env.DATABASE_URL) {
+  console.log('Using DATABASE_URL for connection');
   // Use connection URL if available (Railway provides this)
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
@@ -21,7 +17,7 @@ if (process.env.DATABASE_URL) {
         rejectUnauthorized: false
       }
     },
-    logging: false,
+    logging: console.log, // Enable SQL query logging
     pool: {
       max: 10,
       min: 0,
@@ -30,6 +26,7 @@ if (process.env.DATABASE_URL) {
     }
   });
 } else {
+  console.log('Using individual connection parameters');
   // Use individual connection parameters
   sequelize = new Sequelize({
     database: process.env.DB_NAME || 'budaful_door_designs_dev',
@@ -38,7 +35,7 @@ if (process.env.DATABASE_URL) {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5432,
     dialect: 'postgres',
-    logging: false,
+    logging: console.log, // Enable SQL query logging
     pool: {
       max: 5,
       min: 0,
@@ -47,22 +44,6 @@ if (process.env.DATABASE_URL) {
     }
   });
 }
-
-// Initialize models
-RibbonProduct.initModel(sequelize);
-MumProduct.initModel(sequelize);
-BraidProduct.initModel(sequelize);
-WreathProduct.initModel(sequelize);
-SeasonalProduct.initModel(sequelize);
-
-// Export models
-export const models = {
-  RibbonProduct,
-  MumProduct,
-  BraidProduct,
-  WreathProduct,
-  SeasonalProduct
-};
 
 // Function to test database connection with retries
 export const testConnection = async (maxRetries = 5): Promise<void> => {
@@ -76,6 +57,7 @@ export const testConnection = async (maxRetries = 5): Promise<void> => {
       return;
     } catch (error) {
       lastError = error as Error;
+      console.error('Connection error details:', lastError);
       retries--;
       if (retries === 0) break;
       
@@ -100,4 +82,5 @@ export const syncDatabase = async (force = false): Promise<void> => {
   }
 };
 
+// Export the sequelize instance
 export { sequelize };

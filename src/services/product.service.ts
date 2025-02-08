@@ -5,175 +5,125 @@ import {
   BraidProduct,
   WreathProduct,
   SeasonalProduct,
-  RibbonProductAttributes,
-  MumProductAttributes,
-  BraidProductAttributes,
-  WreathProductAttributes,
-  SeasonalProductAttributes,
-  RibbonProductCreationAttributes,
-  MumProductCreationAttributes,
-  BraidProductCreationAttributes,
-  WreathProductCreationAttributes,
-  SeasonalProductCreationAttributes,
-  BaseProductAttributes,
-} from '../types/models';
+} from '../models';
 
 type ProductType = 'ribbon' | 'mum' | 'braid' | 'wreath' | 'seasonal';
 
-type ProductModel<T extends ProductType> = 
-  T extends 'ribbon' ? typeof RibbonProduct :
-  T extends 'mum' ? typeof MumProduct :
-  T extends 'braid' ? typeof BraidProduct :
-  T extends 'wreath' ? typeof WreathProduct :
-  T extends 'seasonal' ? typeof SeasonalProduct :
-  never;
-
-type ProductAttributes<T extends ProductType> = 
-  T extends 'ribbon' ? RibbonProductAttributes :
-  T extends 'mum' ? MumProductAttributes :
-  T extends 'braid' ? BraidProductAttributes :
-  T extends 'wreath' ? WreathProductAttributes :
-  T extends 'seasonal' ? SeasonalProductAttributes :
-  never;
-
-type ProductCreationAttributes<T extends ProductType> = 
-  T extends 'ribbon' ? RibbonProductCreationAttributes :
-  T extends 'mum' ? MumProductCreationAttributes :
-  T extends 'braid' ? BraidProductCreationAttributes :
-  T extends 'wreath' ? WreathProductCreationAttributes :
-  T extends 'seasonal' ? SeasonalProductCreationAttributes :
-  never;
+type ProductModel = typeof RibbonProduct | typeof MumProduct | typeof BraidProduct | typeof WreathProduct | typeof SeasonalProduct;
 
 type ProductModelMap = {
-  [K in ProductType]: ProductModel<K>;
+  [K in ProductType]: ProductModel;
 };
 
 export class ProductService {
-  constructor(private readonly productModels: ProductModelMap) {}
+  private readonly models: ProductModel[];
 
-  private getModel<T extends ProductType>(type: T): ProductModel<T> {
-    return this.productModels[type] as ProductModel<T>;
+  constructor(private readonly productModels: ProductModelMap) {
+    this.models = Object.values(productModels);
   }
 
-  public async getAllProducts<T extends ProductType>(
-    type: T
-  ): Promise<ProductAttributes<T>[]> {
-    const model = this.getModel(type);
-    const products = await (model as any).findAll();
-    return products.map((product: any) => product.get());
-  }
-
-  public async getProductById<T extends ProductType>(
-    type: T,
-    id: string
-  ): Promise<ProductAttributes<T> | null> {
-    const model = this.getModel(type);
-    const product = await (model as any).findByPk(id);
-    return product ? product.get() : null;
-  }
-
-  public async createProduct<T extends ProductType>(
-    type: T,
-    data: ProductCreationAttributes<T>
-  ): Promise<ProductAttributes<T>> {
-    const model = this.getModel(type);
-    const product = await (model as any).create(data);
-    return product.get();
-  }
-
-  public async updateProduct<T extends ProductType>(
-    type: T,
-    id: string,
-    data: Partial<ProductCreationAttributes<T>>
-  ): Promise<ProductAttributes<T> | null> {
-    const model = this.getModel(type);
-    const [updated] = await (model as any).update(data, {
-      where: { id } as WhereOptions,
-      returning: true,
-    });
-
-    if (updated === 0) {
-      return null;
+  public async getAllProductsAcrossCategories(): Promise<any[]> {
+    try {
+      const allProducts = await Promise.all(
+        this.models.map(model => model.findAll())
+      );
+      
+      return allProducts.flat().map(product => product.get());
+    } catch (error) {
+      console.error('Error in getAllProductsAcrossCategories:', error);
+      throw error;
     }
-
-    const product = await (model as any).findByPk(id);
-    return product ? product.get() : null;
   }
 
-  public async deleteProduct<T extends ProductType>(
-    type: T,
-    id: string
-  ): Promise<boolean> {
-    const model = this.getModel(type);
-    const deleted = await (model as any).destroy({
-      where: { id } as WhereOptions,
-    });
-    return deleted > 0;
+  public async getProductById(id: string): Promise<any | null> {
+    try {
+      for (const model of this.models) {
+        const product = await model.findByPk(id);
+        if (product) {
+          return product.get();
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error in getProductById:', error);
+      throw error;
+    }
   }
 
-  public async searchProducts<T extends ProductType>(
-    type: T,
-    query: string
-  ): Promise<ProductAttributes<T>[]> {
-    const model = this.getModel(type);
-    const products = await (model as any).findAll({
-      where: {
+  public async createProduct(type: ProductType, data: any): Promise<any> {
+    try {
+      const model = this.productModels[type];
+      if (!model) {
+        throw new Error(`Invalid product type: ${type}`);
+      }
+      const product = await model.create(data);
+      return product.get();
+    } catch (error) {
+      console.error('Error in createProduct:', error);
+      throw error;
+    }
+  }
+
+  public async updateProduct(type: ProductType, id: string, data: any): Promise<any | null> {
+    try {
+      const model = this.productModels[type];
+      if (!model) {
+        throw new Error(`Invalid product type: ${type}`);
+      }
+
+      const [updated] = await model.update(data, {
+        where: { id },
+        returning: true,
+      });
+
+      if (updated === 0) {
+        return null;
+      }
+
+      const product = await model.findByPk(id);
+      return product ? product.get() : null;
+    } catch (error) {
+      console.error('Error in updateProduct:', error);
+      throw error;
+    }
+  }
+
+  public async deleteProduct(id: string): Promise<boolean> {
+    try {
+      for (const model of this.models) {
+        const deleted = await model.destroy({ where: { id } });
+        if (deleted > 0) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error in deleteProduct:', error);
+      throw error;
+    }
+  }
+
+  public async searchProductsAcrossCategories(query: string): Promise<any[]> {
+    try {
+      const searchCondition = {
         [Op.or]: [
           { name: { [Op.iLike]: `%${query}%` } },
-          { description: { [Op.iLike]: `%${query}%` } },
-        ],
-      } as WhereOptions,
-    });
-    return products.map((product: any) => product.get());
-  }
+          { description: { [Op.iLike]: `%${query}%` } }
+        ]
+      };
 
-  public async getAvailableProducts<T extends ProductType>(
-    type: T
-  ): Promise<ProductAttributes<T>[]> {
-    const model = this.getModel(type);
-    const products = await (model as any).findAll({
-      where: {
-        isAvailable: true,
-      } as WhereOptions,
-    });
-    return products.map((product: any) => product.get());
-  }
+      const results = await Promise.all(
+        this.models.map(model => 
+          model.findAll({
+            where: searchCondition
+          })
+        )
+      );
 
-  public async getAllProductsAcrossCategories(): Promise<BaseProductAttributes[]> {
-    const allProducts = await Promise.all(
-      Object.entries(this.productModels).map(async ([type, model]) => {
-        const products = await (model as any).findAll({
-          where: { isAvailable: true } as WhereOptions,
-        });
-        return products.map((product: any) => ({
-          ...product.get(),
-          productType: type,
-        }));
-      })
-    );
-    return allProducts.flat();
-  }
-
-  public async searchProductsAcrossCategories(
-    query: string
-  ): Promise<BaseProductAttributes[]> {
-    const allProducts = await Promise.all(
-      Object.entries(this.productModels).map(async ([type, model]) => {
-        const products = await (model as any).findAll({
-          where: {
-            isAvailable: true,
-            [Op.or]: [
-              { name: { [Op.iLike]: `%${query}%` } },
-              { description: { [Op.iLike]: `%${query}%` } },
-            ],
-          } as WhereOptions,
-        });
-        return products.map((product: any) => ({
-          ...product.get(),
-          productType: type,
-        }));
-      })
-    );
-    return allProducts.flat();
+      return results.flat().map(product => product.get());
+    } catch (error) {
+      console.error('Error in searchProductsAcrossCategories:', error);
+      throw error;
+    }
   }
 }
