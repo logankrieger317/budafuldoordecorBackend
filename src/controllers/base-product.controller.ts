@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { ProductService } from '../services/product.service';
+import { ProductService, ProductType } from '../services/product.service';
 import { AppError } from '../types/errors';
 import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../models';
-
-type ProductType = 'ribbon' | 'mum' | 'braid' | 'wreath' | 'seasonal';
 
 export abstract class BaseProductController {
   protected productType: ProductType;
@@ -12,11 +10,11 @@ export abstract class BaseProductController {
   constructor(productType: ProductType) {
     this.productType = productType;
     this.productService = new ProductService({
-      ribbon: RibbonProduct,
-      mum: MumProduct,
-      braid: BraidProduct,
-      wreath: WreathProduct,
-      seasonal: SeasonalProduct
+      [ProductType.RIBBON]: RibbonProduct,
+      [ProductType.MUM]: MumProduct,
+      [ProductType.BRAID]: BraidProduct,
+      [ProductType.WREATH]: WreathProduct,
+      [ProductType.SEASONAL]: SeasonalProduct
     });
   }
 
@@ -34,7 +32,7 @@ export abstract class BaseProductController {
   public getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const product = await this.productService.getProductById(id);
+      const product = await this.productService.getProductById(this.productType, id);
       
       if (!product) {
         next(new AppError(`${this.productType} product not found`, 404));
