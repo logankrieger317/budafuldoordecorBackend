@@ -1,46 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/appError';
-import { ValidationError as SequelizeValidationError } from 'sequelize';
+import { ValidationError as ExpressValidationError } from 'express-validator';
 
-interface ErrorResponse {
-  status: string;
-  message: string;
-  errors?: any[];
-  stack?: string;
+interface CustomError extends Error {
+  statusCode?: number;
+  errors?: ExpressValidationError[];
 }
 
 export const errorHandler = (
-  err: Error | AppError,
+  err: CustomError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message
-    });
-  }
+  console.error(err.stack);
 
-  // Handle Sequelize validation errors
-  if (err instanceof SequelizeValidationError) {
+  // Handle validation errors
+  if (err.errors && Array.isArray(err.errors)) {
     return res.status(400).json({
-      status: 'validation_error',
-      message: 'Validation failed',
-      errors: err.errors.map(e => ({
-        field: e.path,
-        message: e.message
+      message: 'Validation error',
+      errors: err.errors.map(error => ({
+        field: error.type === 'field' ? error.location + '.' + error.path : error.type,
+        message: error.msg
       }))
     });
   }
 
-  // Log unexpected errors
-  console.error('Unexpected error:', err);
+  // Handle known errors with status codes
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({
+      message: err.message
+    });
+  }
 
-  // Send generic error response for unexpected errors
+  // Handle unknown errors
   res.status(500).json({
-    status: 'error',
-    message: 'Something went wrong'
+    message: 'Internal server error'
   });
 };
 

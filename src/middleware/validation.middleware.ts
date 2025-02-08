@@ -1,25 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { body, param, query, validationResult } from 'express-validator';
+import { body, param, query, validationResult, ValidationChain } from 'express-validator';
 import { ValidationError } from '../utils/errors';
 
-export const validate = (req: Request, res: Response, next: NextFunction) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    throw new ValidationError(errors.array()[0].msg);
-  }
-  next();
-};
-
 // Auth validation schemas
-export const registerValidation = [
+export const registerValidation: ValidationChain[] = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address'),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
   body('firstName')
     .trim()
     .notEmpty()
@@ -32,61 +22,19 @@ export const registerValidation = [
     .optional()
     .matches(/^\+?[\d\s-]+$/)
     .withMessage('Please provide a valid phone number'),
-  validate,
 ];
 
-export const loginValidation = [
+export const loginValidation: ValidationChain[] = [
   body('email')
     .isEmail()
     .withMessage('Please provide a valid email address'),
   body('password')
     .notEmpty()
     .withMessage('Password is required'),
-  validate,
-];
-
-// Auth validation middleware
-export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const messages = errors.array().map(err => err.msg);
-    throw new ValidationError(messages.join(', '));
-  }
-  next();
-};
-
-export const validateRegistration = [
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  body('firstName')
-    .notEmpty()
-    .withMessage('First name is required'),
-  body('lastName')
-    .notEmpty()
-    .withMessage('Last name is required'),
-  body('phone')
-    .optional()
-    .matches(/^\+?[\d\s-]+$/)
-    .withMessage('Invalid phone number format'),
-  validateRequest
-];
-
-export const validateLogin = [
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required'),
-  validateRequest
 ];
 
 // Order validation schemas
-export const createOrderValidation = [
+export const createOrderValidation: ValidationChain[] = [
   body('customerEmail')
     .isEmail()
     .withMessage('Please provide a valid email address'),
@@ -111,19 +59,17 @@ export const createOrderValidation = [
   body('items.*.quantity')
     .isInt({ min: 1 })
     .withMessage('Quantity must be at least 1 for each item'),
-  validate,
 ];
 
 // Favorites validation schemas
-export const addFavoriteValidation = [
+export const addFavoriteValidation: ValidationChain[] = [
   body('productSku')
     .notEmpty()
     .withMessage('Product SKU is required'),
-  validate,
 ];
 
 // Pagination validation
-export const paginationValidation = [
+export const paginationValidation: ValidationChain[] = [
   query('page')
     .optional()
     .isInt({ min: 1 })
@@ -132,28 +78,25 @@ export const paginationValidation = [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be between 1 and 100'),
-  validate,
 ];
 
 // ID parameter validation
-export const idParamValidation = [
+export const idParamValidation: ValidationChain[] = [
   param('id')
     .isUUID(4)
     .withMessage('Invalid ID format'),
-  validate,
 ];
 
 // SKU parameter validation
-export const skuParamValidation = [
+export const skuParamValidation: ValidationChain[] = [
   param('productSku')
     .notEmpty()
     .withMessage('Product SKU is required'),
-  validate,
 ];
 
 // Product validation middleware
 export const validateProduct = (productType: string) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const { body } = req;
 
     // Validate base product fields
@@ -246,5 +189,25 @@ export const validateProduct = (productType: string) => {
     }
 
     next();
+  };
+};
+
+export const validate = (validations: ValidationChain[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Run all validations
+    await Promise.all(validations.map(validation => validation.run(req)));
+
+    const errors = validationResult(req);
+    if (errors.isEmpty()) {
+      return next();
+    }
+
+    return res.status(400).json({
+      message: 'Validation error',
+      errors: errors.array().map(err => ({
+        field: err.type === 'field' ? err.location + '.' + err.path : err.type,
+        message: err.msg
+      }))
+    });
   };
 };
