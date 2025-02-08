@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { config } from 'dotenv';
 import { sequelize, testConnection } from './config/database';
 import { errorHandler } from './middleware/error.middleware';
+import { databaseCheck } from './middleware/database-check.middleware';
 import productRoutes from './routes/product.routes';
 import authRoutes from './routes/auth.routes';
 import orderRoutes from './routes/order.routes';
@@ -16,7 +17,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Track application state
-let isStarting = true;
 let isDatabaseConnected = false;
 
 // Middleware
@@ -25,24 +25,26 @@ app.use(helmet());
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  // During startup, return 200 if the server is running
-  if (isStarting) {
-    return res.status(200).json({
-      status: 'starting',
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    isDatabaseConnected = true;
+    
+    res.status(200).json({
+      status: 'healthy',
       timestamp: new Date().toISOString(),
       services: {
         server: 'running',
-        database: 'initializing'
+        database: 'connected'
       },
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development'
     });
-  }
-
-  // After startup, check database connection
-  if (!isDatabaseConnected) {
-    return res.status(503).json({
+  } catch (error) {
+    console.error('Health check failed:', error);
+    isDatabaseConnected = false;
+    
+    res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       services: {
@@ -50,22 +52,14 @@ app.get('/health', (req, res) => {
         database: 'disconnected'
       },
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-
-  // Everything is running normally
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    services: {
-      server: 'running',
-      database: 'connected'
-    },
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
 });
+
+// Database connection check middleware for all routes
+app.use(databaseCheck);
 
 // Routes
 app.use('/api/products', productRoutes);
@@ -77,36 +71,38 @@ app.use('/api/admin', adminRoutes);
 app.use(errorHandler);
 
 const startServer = async () => {
-  // Start the server first
+  let retries = 10;
+  
+  // Try to establish initial database connection
+  while (retries > 0) {
+    try {
+      await testConnection();
+      isDatabaseConnected = true;
+      console.log('Database connection established');
+      break;
+    } catch (error) {
+      retries--;
+      console.error(`Failed to connect to database. ${retries} attempts remaining:`, error);
+      
+      if (retries === 0) {
+        console.error('Failed to establish initial database connection');
+        process.exit(1);
+      }
+      
+      // Wait 5 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+
+  // Start server only after successful database connection
   const server = app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
-  // Then try to connect to the database
-  const connectDatabase = async () => {
-    try {
-      await testConnection();
-      isDatabaseConnected = true;
-      isStarting = false;
-      console.log('Database connection established');
-    } catch (error) {
-      console.error('Failed to connect to database:', error);
-      isDatabaseConnected = false;
-      
-      // Retry connection after 5 seconds
-      console.log('Retrying database connection in 5 seconds...');
-      setTimeout(connectDatabase, 5000);
-    }
-  };
-
-  // Start database connection process
-  connectDatabase();
-
   // Handle shutdown gracefully
   const shutdown = async () => {
     console.log('Shutting down gracefully...');
-    isDatabaseConnected = false;
     
     try {
       await sequelize.close();
@@ -125,4 +121,7 @@ const startServer = async () => {
   process.on('SIGINT', shutdown);
 };
 
-startServer();
+startServer().catch(error => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
