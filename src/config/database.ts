@@ -8,15 +8,31 @@ import { SeasonalProduct } from '../models/seasonal-product.model';
 
 dotenv.config();
 
+interface DbConfig {
+  username: string;
+  password: string;
+  database: string;
+  host: string;
+  port: string | number;
+  dialect: 'postgres';
+  logging: boolean;
+  dialectOptions?: {
+    ssl?: {
+      require: boolean;
+      rejectUnauthorized: boolean;
+    };
+  };
+}
+
 const env = process.env.NODE_ENV || 'development';
-const config = {
+const config: Record<string, DbConfig> = {
   development: {
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'budaful_door_designs_dev',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    dialect: 'postgres' as const,
+    dialect: 'postgres',
     logging: false
   },
   test: {
@@ -25,7 +41,7 @@ const config = {
     database: process.env.DB_NAME || 'budaful_door_designs_test',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    dialect: 'postgres' as const,
+    dialect: 'postgres',
     logging: false
   },
   production: {
@@ -34,7 +50,7 @@ const config = {
     database: process.env.DB_NAME!,
     host: process.env.DB_HOST!,
     port: process.env.DB_PORT!,
-    dialect: 'postgres' as const,
+    dialect: 'postgres',
     logging: false,
     dialectOptions: {
       ssl: {
@@ -45,9 +61,9 @@ const config = {
   }
 };
 
-const dbConfig = config[env as keyof typeof config];
+const dbConfig = config[env];
 
-const sequelize = new Sequelize(
+export const sequelize = new Sequelize(
   dbConfig.database,
   dbConfig.username,
   dbConfig.password,
@@ -56,7 +72,7 @@ const sequelize = new Sequelize(
     port: Number(dbConfig.port),
     dialect: dbConfig.dialect,
     logging: dbConfig.logging,
-    dialectOptions: dbConfig.dialectOptions
+    ...(dbConfig.dialectOptions && { dialectOptions: dbConfig.dialectOptions })
   }
 );
 
@@ -67,7 +83,7 @@ BraidProduct.initModel(sequelize);
 WreathProduct.initModel(sequelize);
 SeasonalProduct.initModel(sequelize);
 
-// Export initialized models
+// Export models and sequelize instance
 export const models = {
   RibbonProduct,
   MumProduct,
