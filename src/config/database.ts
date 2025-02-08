@@ -1,35 +1,64 @@
 import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
 import { RibbonProduct } from '../models/ribbon-product.model';
 import { MumProduct } from '../models/mum-product.model';
 import { BraidProduct } from '../models/braid-product.model';
 import { WreathProduct } from '../models/wreath-product.model';
 import { SeasonalProduct } from '../models/seasonal-product.model';
 
-let sequelize: Sequelize;
+dotenv.config();
 
-// Check if we have a DATABASE_URL (Railway) or individual connection params
-if (process.env.DATABASE_URL) {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
+const env = process.env.NODE_ENV || 'development';
+const config = {
+  development: {
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'budaful_door_designs_dev',
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres' as const,
+    logging: false
+  },
+  test: {
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'budaful_door_designs_test',
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres' as const,
+    logging: false
+  },
+  production: {
+    username: process.env.DB_USER!,
+    password: process.env.DB_PASSWORD!,
+    database: process.env.DB_NAME!,
+    host: process.env.DB_HOST!,
+    port: process.env.DB_PORT!,
+    dialect: 'postgres' as const,
+    logging: false,
     dialectOptions: {
       ssl: {
         require: true,
         rejectUnauthorized: false
       }
-    },
-    logging: false
-  });
-} else {
-  sequelize = new Sequelize({
-    dialect: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs',
-    logging: false,
-  });
-}
+    }
+  }
+};
+
+const dbConfig = config[env as keyof typeof config];
+
+const sequelize = new Sequelize(
+  dbConfig.database,
+  dbConfig.username,
+  dbConfig.password,
+  {
+    host: dbConfig.host,
+    port: Number(dbConfig.port),
+    dialect: dbConfig.dialect,
+    logging: dbConfig.logging,
+    dialectOptions: dbConfig.dialectOptions
+  }
+);
 
 // Initialize models
 RibbonProduct.initModel(sequelize);
@@ -50,7 +79,7 @@ export const models = {
 export { sequelize };
 
 // Function to test database connection
-export async function testConnection(): Promise<void> {
+export const testConnection = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
@@ -58,10 +87,10 @@ export async function testConnection(): Promise<void> {
     console.error('Unable to connect to the database:', error);
     throw error;
   }
-}
+};
 
 // Function to sync database
-export async function syncDatabase(force = false): Promise<void> {
+export const syncDatabase = async (force = false): Promise<void> => {
   try {
     await sequelize.sync({ force });
     console.log('Database synced successfully');
@@ -69,4 +98,4 @@ export async function syncDatabase(force = false): Promise<void> {
     console.error('Error syncing database:', error);
     throw error;
   }
-}
+};
