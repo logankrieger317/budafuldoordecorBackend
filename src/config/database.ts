@@ -89,4 +89,15 @@ export const testConnection = async (maxRetries = 5): Promise<void> => {
   throw lastError;
 };
 
+// Function to sync database
+export const syncDatabase = async (force = false): Promise<void> => {
+  try {
+    await sequelize.sync({ force });
+    console.log('Database synced successfully');
+  } catch (error) {
+    console.error('Error syncing database:', error);
+    throw error;
+  }
+};
+
 export { sequelize };
