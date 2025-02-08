@@ -83,16 +83,14 @@ BraidProduct.initModel(sequelize);
 WreathProduct.initModel(sequelize);
 SeasonalProduct.initModel(sequelize);
 
-// Export models and sequelize instance
+// Export models
 export const models = {
   RibbonProduct,
   MumProduct,
   BraidProduct,
   WreathProduct,
-  SeasonalProduct,
+  SeasonalProduct
 };
-
-export { sequelize };
 
 // Function to test database connection
 export const testConnection = async (): Promise<void> => {
