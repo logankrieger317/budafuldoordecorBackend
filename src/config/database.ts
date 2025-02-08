@@ -8,111 +8,45 @@ import { SeasonalProduct } from '../models/seasonal-product.model';
 
 dotenv.config();
 
-interface DbConfig {
-  username: string;
-  password: string;
-  database: string;
-  host: string;
-  port: string | number;
-  dialect: 'postgres';
-  logging: boolean;
-  dialectOptions?: {
-    ssl?: {
-      require: boolean;
-      rejectUnauthorized: boolean;
-    };
-  };
-  pool?: {
-    max: number;
-    min: number;
-    acquire: number;
-    idle: number;
-  };
-  retry?: {
-    max: number;
-  };
-}
-
 const env = process.env.NODE_ENV || 'development';
-const config: Record<string, DbConfig> = {
-  development: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs_dev',
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
+let sequelize: Sequelize;
+
+if (process.env.DATABASE_URL) {
+  // Use connection URL if available (Railway provides this)
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    logging: false,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
     },
-    retry: {
-      max: 5
-    }
-  },
-  test: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs_test',
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    dialect: 'postgres',
-    logging: false,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    retry: {
-      max: 5
-    }
-  },
-  production: {
-    username: process.env.DB_USER!,
-    password: process.env.DB_PASSWORD!,
-    database: process.env.DB_NAME!,
-    host: process.env.DB_HOST!,
-    port: process.env.DB_PORT!,
-    dialect: 'postgres',
     logging: false,
     pool: {
       max: 10,
       min: 0,
       acquire: 60000,
       idle: 10000
-    },
-    retry: {
-      max: 10
-    },
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
     }
-  }
-};
-
-const dbConfig = config[env];
-
-export const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password,
-  {
-    host: dbConfig.host,
-    port: Number(dbConfig.port),
-    dialect: dbConfig.dialect,
-    logging: dbConfig.logging,
-    pool: dbConfig.pool,
-    retry: dbConfig.retry,
-    ...(dbConfig.dialectOptions && { dialectOptions: dbConfig.dialectOptions })
-  }
-);
+  });
+} else {
+  // Use individual connection parameters
+  sequelize = new Sequelize({
+    database: process.env.DB_NAME || 'budaful_door_designs_dev',
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 5432,
+    dialect: 'postgres',
+    logging: false,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
+}
 
 // Initialize models
 RibbonProduct.initModel(sequelize);
@@ -133,31 +67,26 @@ export const models = {
 // Function to test database connection with retries
 export const testConnection = async (maxRetries = 5): Promise<void> => {
   let retries = maxRetries;
+  let lastError: Error | null = null;
+
   while (retries > 0) {
     try {
       await sequelize.authenticate();
       console.log('Database connection has been established successfully.');
       return;
     } catch (error) {
+      lastError = error as Error;
       retries--;
-      if (retries === 0) {
-        console.error('Unable to connect to the database after multiple attempts:', error);
-        throw error;
-      }
+      if (retries === 0) break;
+      
       console.log(`Failed to connect to database. Retrying... (${retries} attempts remaining)`);
-      // Wait 2 seconds before retrying
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait 5 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
+
+  console.error('Unable to connect to the database after multiple attempts:', lastError);
+  throw lastError;
 };
 
-// Function to sync database
-export const syncDatabase = async (force = false): Promise<void> => {
-  try {
-    await sequelize.sync({ force });
-    console.log('Database synced successfully');
-  } catch (error) {
-    console.error('Error syncing database:', error);
-    throw error;
-  }
-};
+export { sequelize };

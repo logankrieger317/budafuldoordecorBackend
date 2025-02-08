@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const config = {
+let config = {
   development: {
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
@@ -20,28 +20,31 @@ const config = {
     logging: false
   },
   production: {
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: process.env.DB_NAME || 'budaful_door_designs',
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
+    url: process.env.DATABASE_URL,
     dialect: 'postgres',
-    logging: false
-  }
-};
-
-// If DATABASE_URL is present (e.g., in production), use it with SSL
-if (process.env.DATABASE_URL && process.env.NODE_ENV === 'production') {
-  config.production = {
-    use_env_variable: 'DATABASE_URL',
-    dialect: 'postgres',
-    logging: false,
     dialectOptions: {
       ssl: {
         require: true,
         rejectUnauthorized: false
       }
-    }
+    },
+    logging: false
+  }
+};
+
+// Override any environment with DATABASE_URL if present
+if (process.env.DATABASE_URL) {
+  const env = process.env.NODE_ENV || 'development';
+  config[env] = {
+    url: process.env.DATABASE_URL,
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
+    logging: false
   };
 }
 
