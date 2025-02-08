@@ -22,6 +22,15 @@ interface DbConfig {
       rejectUnauthorized: boolean;
     };
   };
+  pool?: {
+    max: number;
+    min: number;
+    acquire: number;
+    idle: number;
+  };
+  retry?: {
+    max: number;
+  };
 }
 
 const env = process.env.NODE_ENV || 'development';
@@ -33,7 +42,16 @@ const config: Record<string, DbConfig> = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: false
+    logging: false,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    },
+    retry: {
+      max: 5
+    }
   },
   test: {
     username: process.env.DB_USER || 'postgres',
@@ -42,7 +60,16 @@ const config: Record<string, DbConfig> = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: false
+    logging: false,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    },
+    retry: {
+      max: 5
+    }
   },
   production: {
     username: process.env.DB_USER!,
@@ -52,6 +79,15 @@ const config: Record<string, DbConfig> = {
     port: process.env.DB_PORT!,
     dialect: 'postgres',
     logging: false,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 60000,
+      idle: 10000
+    },
+    retry: {
+      max: 10
+    },
     dialectOptions: {
       ssl: {
         require: true,
@@ -72,6 +108,8 @@ export const sequelize = new Sequelize(
     port: Number(dbConfig.port),
     dialect: dbConfig.dialect,
     logging: dbConfig.logging,
+    pool: dbConfig.pool,
+    retry: dbConfig.retry,
     ...(dbConfig.dialectOptions && { dialectOptions: dbConfig.dialectOptions })
   }
 );
@@ -92,14 +130,24 @@ export const models = {
   SeasonalProduct
 };
 
-// Function to test database connection
-export const testConnection = async (): Promise<void> => {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    throw error;
+// Function to test database connection with retries
+export const testConnection = async (maxRetries = 5): Promise<void> => {
+  let retries = maxRetries;
+  while (retries > 0) {
+    try {
+      await sequelize.authenticate();
+      console.log('Database connection has been established successfully.');
+      return;
+    } catch (error) {
+      retries--;
+      if (retries === 0) {
+        console.error('Unable to connect to the database after multiple attempts:', error);
+        throw error;
+      }
+      console.log(`Failed to connect to database. Retrying... (${retries} attempts remaining)`);
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
   }
 };
 

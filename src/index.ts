@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
-import { sequelize } from './config/database';
+import { sequelize, testConnection } from './config/database';
 import { errorHandler } from './middleware/error.middleware';
 import productRoutes from './routes/product.routes';
 import authRoutes from './routes/auth.routes';
@@ -23,10 +23,22 @@ app.use(express.json());
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    // Test database connection
-    await sequelize.authenticate();
+    // Test database connection with retry logic
+    let retries = 5;
+    let connected = false;
     
-    // Quick check of essential services
+    while (retries > 0 && !connected) {
+      try {
+        await sequelize.authenticate();
+        connected = true;
+      } catch (error) {
+        retries--;
+        if (retries === 0) throw error;
+        // Wait 2 seconds before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
     const healthcheck = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -38,7 +50,6 @@ app.get('/health', async (req, res) => {
       environment: process.env.NODE_ENV || 'development'
     };
 
-    // Return 200 for Railway's health check
     res.status(200).json(healthcheck);
   } catch (error) {
     console.error('Health check failed:', error);
@@ -50,42 +61,37 @@ app.get('/health', async (req, res) => {
         database: 'disconnected',
         server: 'running'
       },
-      error: error instanceof Error ? error.message : 'Unknown error',
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
 
-    // Return 503 to indicate service unavailability
     res.status(503).json(healthcheck);
   }
 });
 
 // Routes
-app.use('/api', productRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Error handling middleware
+// Error handling
 app.use(errorHandler);
 
-async function startServer() {
+const startServer = async () => {
   try {
-    // Test database connection
-    await sequelize.authenticate();
-    console.log('Database connection successful');
-
-    // Sync database models
-    await sequelize.sync();
-    console.log('Database models synchronized');
-
+    // Test database connection before starting server
+    await testConnection();
+    
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
   }
-}
+};
 
 startServer();
