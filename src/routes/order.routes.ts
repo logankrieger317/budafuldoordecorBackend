@@ -1,35 +1,89 @@
 import { Router } from 'express';
-import { OrderController } from '../controllers/order.controller';
-import { authenticateUser } from '../middleware/auth.middleware';
 import { body, ValidationChain } from 'express-validator';
-import { validateRequest } from '../middleware/validation.middleware';
+import { authenticateUser } from '../middleware/auth.middleware';
+import { validate } from '../middleware/validation.middleware';
+import { 
+  createOrder, 
+  getUserOrders, 
+  getOrder, 
+  updateOrder, 
+  deleteOrder 
+} from '../controllers/order.controller';
 
 const router = Router();
-const orderController = new OrderController();
 
-const createOrderValidation: ValidationChain[] = [
-  body('customerEmail').isEmail().withMessage('Valid email is required'),
-  body('customerName').notEmpty().withMessage('Customer name is required'),
-  body('shippingAddress').notEmpty().withMessage('Shipping address is required'),
-  body('billingAddress').notEmpty().withMessage('Billing address is required'),
-  body('totalAmount').isNumeric().withMessage('Total amount must be a number'),
-  body('items').isArray().withMessage('Items must be an array'),
-  body('items.*.sku').notEmpty().withMessage('Product SKU is required'),
-  body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('items.*.price').isNumeric().withMessage('Price must be a number'),
-  body('items.*.productType').notEmpty().withMessage('Product type is required')
+// Order validation schemas
+const orderValidation: ValidationChain[] = [
+  body('items')
+    .isArray()
+    .withMessage('Items must be an array')
+    .notEmpty()
+    .withMessage('At least one item is required'),
+  body('items.*.productSku')
+    .isString()
+    .notEmpty()
+    .withMessage('Product SKU is required'),
+  body('items.*.quantity')
+    .isInt({ min: 1 })
+    .withMessage('Quantity must be at least 1'),
+  body('items.*.price')
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+  body('shippingAddress')
+    .isObject()
+    .withMessage('Shipping address must be an object'),
+  body('shippingAddress.street')
+    .isString()
+    .notEmpty()
+    .withMessage('Street address is required'),
+  body('shippingAddress.city')
+    .isString()
+    .notEmpty()
+    .withMessage('City is required'),
+  body('shippingAddress.state')
+    .isString()
+    .notEmpty()
+    .withMessage('State is required'),
+  body('shippingAddress.zipCode')
+    .isString()
+    .matches(/^\d{5}(-\d{4})?$/)
+    .withMessage('Valid ZIP code is required'),
+  body('billingAddress')
+    .isObject()
+    .withMessage('Billing address must be an object'),
+  body('billingAddress.street')
+    .isString()
+    .notEmpty()
+    .withMessage('Street address is required'),
+  body('billingAddress.city')
+    .isString()
+    .notEmpty()
+    .withMessage('City is required'),
+  body('billingAddress.state')
+    .isString()
+    .notEmpty()
+    .withMessage('State is required'),
+  body('billingAddress.zipCode')
+    .isString()
+    .matches(/^\d{5}(-\d{4})?$/)
+    .withMessage('Valid ZIP code is required'),
+  body('totalAmount')
+    .isFloat({ min: 0 })
+    .withMessage('Total amount must be a positive number'),
+  body('customerName')
+    .isString()
+    .notEmpty()
+    .withMessage('Customer name is required'),
+  body('customerEmail')
+    .isEmail()
+    .withMessage('Valid customer email is required')
 ];
 
-const updateOrderStatusValidation: ValidationChain[] = [
-  body('status')
-    .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])
-    .withMessage('Invalid order status')
-];
-
-router.post('/', createOrderValidation, validateRequest, authenticateUser, orderController.createOrder.bind(orderController));
-router.get('/', authenticateUser, orderController.getOrders.bind(orderController));
-router.get('/:id', authenticateUser, orderController.getOrder.bind(orderController));
-router.get('/customer/:customerEmail', authenticateUser, orderController.getCustomerOrders.bind(orderController));
-router.patch('/:id/status', updateOrderStatusValidation, validateRequest, authenticateUser, orderController.updateOrderStatus.bind(orderController));
+// Routes
+router.post('/', authenticateUser, validate(orderValidation), createOrder);
+router.get('/', authenticateUser, getUserOrders);
+router.get('/:id', authenticateUser, getOrder);
+router.put('/:id', authenticateUser, validate(orderValidation), updateOrder);
+router.delete('/:id', authenticateUser, deleteOrder);
 
 export default router;

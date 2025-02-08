@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { OrderHistoryController } from '../controllers/order-history.controller';
 import { authenticateUser } from '../middleware/auth.middleware';
+import { getOrderHistory } from '../controllers/order-history.controller';
 
 const router = Router();
 
@@ -8,15 +8,15 @@ const router = Router();
 router.use(authenticateUser);
 
 // Get paginated order history
-router.get('/', OrderHistoryController.getOrderHistory);
+router.get('/', authenticateUser, getOrderHistory);
 
 // Get specific order details
-router.get('/:orderId', OrderHistoryController.getOrderDetails);
+router.get('/:orderId', getOrderHistory);
 
 // Get recent orders (limited number)
-router.get('/recent/list', OrderHistoryController.getRecentOrders);
+router.get('/recent/list', getOrderHistory);
 
 // Get order statistics
-router.get('/stats/summary', OrderHistoryController.getOrderStats);
+router.get('/stats/summary', getOrderHistory);
 
 export default router;

@@ -8,7 +8,6 @@ import { MumProduct } from './mum-product.model';
 import { BraidProduct } from './braid-product.model';
 import { WreathProduct } from './wreath-product.model';
 import { SeasonalProduct } from './seasonal-product.model';
-import { Admin } from './admin.model';
 import { BaseProduct } from './base-product.model';
 
 // Initialize models
@@ -21,28 +20,6 @@ BraidProduct.initModel(sequelize);
 WreathProduct.initModel(sequelize);
 SeasonalProduct.initModel(sequelize);
 BaseProduct.initModel(sequelize);
-Admin.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize,
-    modelName: 'Admin',
-  }
-);
 
 // Initialize associations
 Order.hasMany(OrderItem, {
@@ -73,6 +50,5 @@ export {
   BraidProduct,
   WreathProduct,
   SeasonalProduct,
-  Admin,
   BaseProduct,
 };

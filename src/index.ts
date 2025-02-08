@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
 import { sequelize } from './config/database';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler } from './middleware/error.middleware';
 import productRoutes from './routes/product.routes';
 import authRoutes from './routes/auth.routes';
 import orderRoutes from './routes/order.routes';

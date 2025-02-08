@@ -211,3 +211,6 @@ export const validate = (validations: ValidationChain[]) => {
     });
   };
 };
+
+// Alias for backward compatibility
+export const validateRequest = validate;

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { body, validationResult } from 'express-validator';
-import { adminAuth } from '../middleware/adminAuth';
-import { Admin } from '../models/admin.model';
+import { body, validationResult, ValidationChain } from 'express-validator';
+import { authenticateAdmin } from '../middleware/auth.middleware';
+import { User } from '../models/user.model';
 import { Order } from '../models/order.model';
 import { OrderItem } from '../models/order-item.model';
 
@@ -25,6 +25,25 @@ const validateRequest = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+// Admin validation schema
+const adminValidation: ValidationChain[] = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required'),
+  body('password')
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+  body('firstName')
+    .isString()
+    .notEmpty()
+    .withMessage('First name is required'),
+  body('lastName')
+    .isString()
+    .notEmpty()
+    .withMessage('Last name is required')
+];
+
 // Admin Login
 router.post('/login', async (req: AdminLoginRequest, res: Response) => {
   try {
@@ -43,8 +62,8 @@ router.post('/login', async (req: AdminLoginRequest, res: Response) => {
     }
 
     // Find admin user
-    const admin = await Admin.findOne({ 
-      where: { email },
+    const admin = await User.findOne({ 
+      where: { email, isAdmin: true },
       attributes: ['id', 'email', 'password', 'createdAt', 'updatedAt']
     });
     console.log('Admin found:', admin ? 'yes' : 'no');
@@ -87,11 +106,59 @@ router.post('/login', async (req: AdminLoginRequest, res: Response) => {
   }
 });
 
-// Get all admins
-router.get('/', adminAuth, async (req: Request, res: Response, next: NextFunction) => {
+// Create a new admin user
+router.post('/create', authenticateAdmin, adminValidation, validateRequest, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const admins = await Admin.findAll({
-      attributes: ['id', 'email', 'createdAt', 'updatedAt']
+    const { email, password, firstName, lastName } = req.body;
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    const hashedPassword = await bcryptjs.hash(password, 10);
+    const admin = await User.create({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      isAdmin: true
+    });
+
+    res.status(201).json({
+      message: 'Admin user created successfully',
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all admin users
+router.get('/', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const admins = await User.findAll({
+      where: { isAdmin: true },
+      attributes: ['id', 'email', 'firstName', 'lastName', 'createdAt']
+    });
+
+    res.json(admins);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all admins
+router.get('/admins', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const admins = await User.findAll({
+      where: { isAdmin: true },
+      attributes: ['id', 'email', 'firstName', 'lastName', 'createdAt', 'updatedAt']
     });
     res.json(admins);
   } catch (error) {
@@ -99,69 +166,27 @@ router.get('/', adminAuth, async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Create new admin
-router.post('/', 
-  adminAuth,
-  [
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/\d/)
-      .withMessage('Password must contain a number')
-      .matches(/[A-Z]/)
-      .withMessage('Password must contain an uppercase letter'),
-  ],
-  validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { email, password } = req.body;
-
-      const existingAdmin = await Admin.findOne({ where: { email } });
-      if (existingAdmin) {
-        return res.status(400).json({ message: 'Admin already exists' });
-      }
-
-      const hashedPassword = await bcryptjs.hash(password, 10);
-
-      const admin = await Admin.create({
-        email,
-        password: hashedPassword
-      });
-
-      const adminResponse = {
-        id: admin.get('id'),
-        email: admin.get('email'),
-        createdAt: admin.get('createdAt'),
-        updatedAt: admin.get('updatedAt')
-      };
-
-      res.status(201).json(adminResponse);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
 // Delete admin
-router.delete('/:id', adminAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const admin = await Admin.findByPk(id);
+    const admin = await User.findOne({
+      where: { id, isAdmin: true }
+    });
 
     if (!admin) {
       return res.status(404).json({ message: 'Admin not found' });
     }
 
-    await admin.destroy();
-    res.json({ message: 'Admin deleted successfully' });
+    await admin.update({ isAdmin: false });
+    res.status(200).json({ message: 'Admin privileges revoked successfully' });
   } catch (error) {
     next(error);
   }
 });
 
 // Order Management Routes
-router.get('/orders', adminAuth, async (req: Request, res: Response) => {
+router.get('/orders', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const orders = await Order.findAll({
       include: [OrderItem],
@@ -175,7 +200,7 @@ router.get('/orders', adminAuth, async (req: Request, res: Response) => {
   }
 });
 
-router.get('/orders/:id', adminAuth, async (req: Request, res: Response) => {
+router.get('/orders/:id', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const order = await Order.findByPk(req.params.id, {
       include: [OrderItem]
@@ -193,7 +218,7 @@ router.get('/orders/:id', adminAuth, async (req: Request, res: Response) => {
   }
 });
 
-router.patch('/orders/:id/status', adminAuth, async (req: Request, res: Response) => {
+router.patch('/orders/:id/status', authenticateAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
