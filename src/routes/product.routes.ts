@@ -3,16 +3,22 @@ import { body, ValidationChain } from 'express-validator';
 import { authenticateAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
 import { checkDatabaseConnection } from '../middleware/database.middleware';
-import {
-  getAllProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  searchProducts
-} from '../controllers/product.controller';
+import { ProductController } from '../controllers/product.controller';
+import { ProductService } from '../services/product.service';
+import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../models';
+import { ProductType } from '../services/product.service';
 
 const router = Router();
+
+// Initialize controller
+const productService = new ProductService({
+  [ProductType.RIBBON]: RibbonProduct,
+  [ProductType.MUM]: MumProduct,
+  [ProductType.BRAID]: BraidProduct,
+  [ProductType.WREATH]: WreathProduct,
+  [ProductType.SEASONAL]: SeasonalProduct,
+});
+const productController = new ProductController(productService);
 
 // Base product validation
 const baseProductValidation: ValidationChain[] = [
@@ -28,57 +34,42 @@ const baseProductValidation: ValidationChain[] = [
     .isFloat({ min: 0 })
     .withMessage('Price must be a positive number'),
   body('imageUrl')
-    .isString()
-    .notEmpty()
-    .withMessage('Image URL is required'),
-  body('isAvailable')
-    .optional()
-    .isBoolean()
-    .withMessage('isAvailable must be a boolean'),
+    .isURL()
+    .withMessage('Valid image URL is required'),
   body('quantity')
     .isInt({ min: 0 })
     .withMessage('Quantity must be a non-negative integer'),
-  body('type')
-    .isString()
-    .notEmpty()
-    .withMessage('Product type is required')
-    .isIn(['ribbon', 'mum', 'braid', 'wreath', 'seasonal'])
-    .withMessage('Invalid product type')
+  body('isAvailable')
+    .isBoolean()
+    .withMessage('Availability status must be a boolean')
 ];
 
-// Type-specific validation
-const ribbonProductValidation: ValidationChain[] = [
-  ...baseProductValidation,
-  body('ribbonLength')
-    .isString()
-    .notEmpty()
-    .withMessage('Ribbon length is required'),
-  body('ribbonWidth')
-    .isString()
-    .notEmpty()
-    .withMessage('Ribbon width is required'),
-  body('ribbonColors')
-    .isArray()
-    .withMessage('Ribbon colors must be an array')
-    .notEmpty()
-    .withMessage('At least one ribbon color is required'),
-  body('ribbonPattern')
-    .isString()
-    .notEmpty()
-    .withMessage('Ribbon pattern is required')
-];
+// Routes
+router.get('/', checkDatabaseConnection, productController.getAllProducts.bind(productController));
+router.get('/search', checkDatabaseConnection, productController.searchProducts.bind(productController));
+router.get('/:id', checkDatabaseConnection, productController.getProductById.bind(productController));
 
-// Apply database connection check to all routes
-router.use(checkDatabaseConnection);
+router.post(
+  '/:type',
+  authenticateAdmin,
+  checkDatabaseConnection,
+  validate(baseProductValidation),
+  productController.createProduct.bind(productController)
+);
 
-// Public routes
-router.get('/', getAllProducts);
-router.get('/search', searchProducts);
-router.get('/:id', getProductById);
+router.put(
+  '/:type/:id',
+  authenticateAdmin,
+  checkDatabaseConnection,
+  validate(baseProductValidation),
+  productController.updateProduct.bind(productController)
+);
 
-// Protected routes (admin only)
-router.post('/', authenticateAdmin, validate(ribbonProductValidation), createProduct);
-router.put('/:id', authenticateAdmin, validate(ribbonProductValidation), updateProduct);
-router.delete('/:id', authenticateAdmin, deleteProduct);
+router.delete(
+  '/:id',
+  authenticateAdmin,
+  checkDatabaseConnection,
+  productController.deleteProduct.bind(productController)
+);
 
 export default router;

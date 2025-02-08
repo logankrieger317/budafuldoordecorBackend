@@ -1,34 +1,54 @@
 import { Request, Response } from 'express';
 import { sequelize } from '../config/database';
-import { Order, OrderItem } from '../models/order.model';
+import { Order, OrderItem } from '../models';
 import { AppError } from '../types/errors';
 
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
   const t = await sequelize.transaction();
 
   try {
-    const { userId, items } = req.body;
+    const {
+      userId,
+      items,
+      customerEmail,
+      customerName,
+      shippingAddress,
+      billingAddress,
+      totalAmount
+    } = req.body;
 
     const order = await Order.create({
       userId,
-      status: 'pending'
+      customerEmail,
+      customerName,
+      shippingAddress,
+      billingAddress,
+      totalAmount,
+      status: 'pending',
+      paymentStatus: 'pending'
     }, { transaction: t });
 
     await Promise.all(
       items.map((item: any) =>
         OrderItem.create({
           orderId: order.id,
-          productId: item.productId,
+          productSku: item.productId,
           quantity: item.quantity,
-          price: item.price
+          priceAtTime: item.price
         }, { transaction: t })
       )
     );
 
     await t.commit();
-    res.status(201).json(order);
+    
+    const createdOrder = await Order.findByPk(order.id, {
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+    
+    res.status(201).json(createdOrder);
   } catch (error) {
     await t.rollback();
+    console.error('Error creating order:', error);
     throw new AppError(`Error creating order: ${error}`, 500);
   }
 };
@@ -46,6 +66,7 @@ export const getOrderById = async (req: Request, res: Response): Promise<void> =
 
     res.json(order);
   } catch (error) {
+    console.error('Error fetching order:', error);
     throw new AppError(`Error fetching order: ${error}`, 500);
   }
 };
@@ -55,16 +76,20 @@ export const getUserOrders = async (req: Request, res: Response): Promise<void> 
     const { userId } = req.params;
     const orders = await Order.findAll({
       where: { userId },
-      include: [{ model: OrderItem, as: 'items' }]
+      include: [{ model: OrderItem, as: 'items' }],
+      order: [['createdAt', 'DESC']]
     });
 
     res.json(orders);
   } catch (error) {
+    console.error('Error fetching user orders:', error);
     throw new AppError(`Error fetching user orders: ${error}`, 500);
   }
 };
 
 export const updateOrderStatus = async (req: Request, res: Response): Promise<void> => {
+  const t = await sequelize.transaction();
+
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -74,9 +99,17 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
       throw new AppError('Order not found', 404);
     }
 
-    await order.update({ status });
-    res.json(order);
+    await order.update({ status }, { transaction: t });
+    await t.commit();
+
+    const updatedOrder = await Order.findByPk(id, {
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+    
+    res.json(updatedOrder);
   } catch (error) {
+    await t.rollback();
+    console.error('Error updating order status:', error);
     throw new AppError(`Error updating order status: ${error}`, 500);
   }
 };

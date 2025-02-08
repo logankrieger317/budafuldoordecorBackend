@@ -30,9 +30,20 @@ async function seedDatabase() {
       baseColors: ['white', 'gold'],
       accentColors: ['red', 'blue'],
       hasLights: true,
-      hasBells: true,
-      hasFeathers: true,
       quantity: 50,
+      isAvailable: true
+    });
+
+    // Seed braid products
+    await BraidProduct.create({
+      name: 'Classic Braid',
+      description: 'Beautiful braided design',
+      price: 29.99,
+      imageUrl: 'https://example.com/braid1.jpg',
+      braidLength: '24 inches',
+      braidColors: ['gold', 'silver'],
+      braidPattern: 'classic',
+      quantity: 75,
       isAvailable: true
     });
 
