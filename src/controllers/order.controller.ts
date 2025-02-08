@@ -1,179 +1,82 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { sequelize } from '../config/database';
-import { Order, OrderItem } from '../models';
-import { AuthRequest } from '../middleware/auth.middleware';
+import { Order, OrderItem } from '../models/order.model';
+import { AppError } from '../types/errors';
 
-export const createOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const createOrder = async (req: Request, res: Response): Promise<void> => {
   const t = await sequelize.transaction();
 
   try {
-    if (!req.user) {
-      await t.rollback();
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const { items, shippingAddress, billingAddress, customerName, customerEmail, totalAmount } = req.body;
+    const { userId, items } = req.body;
 
     const order = await Order.create({
-      userId: req.user.id,
-      customerEmail,
-      customerName,
-      shippingAddress,
-      billingAddress,
-      totalAmount,
-      status: 'pending',
-      paymentStatus: 'pending'
+      userId,
+      status: 'pending'
     }, { transaction: t });
 
     await Promise.all(
-      items.map(async (item: any) => {
-        return OrderItem.create({
-          orderId: order.get('id'),
-          productSku: item.sku,
+      items.map((item: any) =>
+        OrderItem.create({
+          orderId: order.id,
+          productId: item.productId,
           quantity: item.quantity,
-          priceAtTime: item.price
-        }, { transaction: t });
-      })
+          price: item.price
+        }, { transaction: t })
+      )
     );
 
     await t.commit();
     res.status(201).json(order);
   } catch (error) {
     await t.rollback();
-    next(error);
+    throw new AppError(`Error creating order: ${error}`, 500);
   }
 };
 
-export const getUserOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getOrderById = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const orders = await Order.findAll({
-      where: { userId: req.user.id },
-      include: [{ model: OrderItem, as: 'items' }],
-      order: [['createdAt', 'DESC']]
-    });
-
-    res.json(orders);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const order = await Order.findOne({
-      where: { 
-        id: req.params.id,
-        userId: req.user.id
-      },
+    const { id } = req.params;
+    const order = await Order.findByPk(id, {
       include: [{ model: OrderItem, as: 'items' }]
     });
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      throw new AppError('Order not found', 404);
     }
 
     res.json(order);
   } catch (error) {
-    next(error);
+    throw new AppError(`Error fetching order: ${error}`, 500);
   }
 };
 
-export const updateOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const t = await sequelize.transaction();
-
+export const getUserOrders = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user) {
-      await t.rollback();
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const { items, shippingAddress, billingAddress, totalAmount } = req.body;
-    
-    const order = await Order.findOne({
-      where: {
-        id: req.params.id,
-        userId: req.user.id
-      },
-      transaction: t
+    const { userId } = req.params;
+    const orders = await Order.findAll({
+      where: { userId },
+      include: [{ model: OrderItem, as: 'items' }]
     });
 
+    res.json(orders);
+  } catch (error) {
+    throw new AppError(`Error fetching user orders: ${error}`, 500);
+  }
+};
+
+export const updateOrderStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findByPk(id);
     if (!order) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Order not found' });
+      throw new AppError('Order not found', 404);
     }
 
-    await order.update({
-      shippingAddress,
-      billingAddress,
-      totalAmount
-    }, { transaction: t });
-
-    // Update order items
-    await OrderItem.destroy({ 
-      where: { orderId: order.id },
-      transaction: t 
-    });
-
-    await Promise.all(
-      items.map(async (item: any) => {
-        return OrderItem.create({
-          orderId: order.id,
-          productSku: item.sku,
-          quantity: item.quantity,
-          priceAtTime: item.price
-        }, { transaction: t });
-      })
-    );
-
-    await t.commit();
+    await order.update({ status });
     res.json(order);
   } catch (error) {
-    await t.rollback();
-    next(error);
-  }
-};
-
-export const deleteOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const t = await sequelize.transaction();
-
-  try {
-    if (!req.user) {
-      await t.rollback();
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const order = await Order.findOne({
-      where: {
-        id: req.params.id,
-        userId: req.user.id
-      },
-      transaction: t
-    });
-
-    if (!order) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    await OrderItem.destroy({
-      where: { orderId: order.id },
-      transaction: t
-    });
-
-    await order.destroy({ transaction: t });
-    await t.commit();
-    
-    res.status(204).send();
-  } catch (error) {
-    await t.rollback();
-    next(error);
+    throw new AppError(`Error updating order status: ${error}`, 500);
   }
 };

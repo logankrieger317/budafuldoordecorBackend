@@ -1,14 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { ProductService } from '../services/product.service';
-import { BaseProductAttributes } from '../types/models';
 import { AppError } from '../types/errors';
-import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../types/models';
+import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../models';
+
+type ProductType = 'ribbon' | 'mum' | 'braid' | 'wreath' | 'seasonal';
 
 export abstract class BaseProductController {
-  protected productType: string;
+  protected productType: ProductType;
   protected productService: ProductService;
 
-  constructor(productType: string) {
+  constructor(productType: ProductType) {
     this.productType = productType;
     this.productService = new ProductService({
       ribbon: RibbonProduct,
@@ -22,7 +23,7 @@ export abstract class BaseProductController {
   // Get all products of this type
   public getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const products = await this.productService.getAllProducts(this.productType as any);
+      const products = await this.productService.getAllProductsAcrossCategories();
       res.json(products);
     } catch (error) {
       next(new AppError(`Error fetching ${this.productType} products: ${error}`, 500));
@@ -33,7 +34,7 @@ export abstract class BaseProductController {
   public getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const product = await this.productService.getProductById(this.productType as any, id);
+      const product = await this.productService.getProductById(id);
       
       if (!product) {
         next(new AppError(`${this.productType} product not found`, 404));
@@ -49,7 +50,10 @@ export abstract class BaseProductController {
   // Create a new product
   public create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const product = await this.productService.createProduct(this.productType as any, req.body);
+      const product = await this.productService.createProduct(this.productType, {
+        ...req.body,
+        type: this.productType
+      });
       res.status(201).json(product);
     } catch (error) {
       next(new AppError(`Error creating ${this.productType} product: ${error}`, 500));
@@ -60,7 +64,10 @@ export abstract class BaseProductController {
   public update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const product = await this.productService.updateProduct(this.productType as any, id, req.body);
+      const product = await this.productService.updateProduct(this.productType, id, {
+        ...req.body,
+        type: this.productType
+      });
       
       if (!product) {
         next(new AppError(`${this.productType} product not found`, 404));
@@ -77,7 +84,7 @@ export abstract class BaseProductController {
   public delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const success = await this.productService.deleteProduct(this.productType as any, id);
+      const success = await this.productService.deleteProduct(id);
       
       if (!success) {
         next(new AppError(`${this.productType} product not found`, 404));

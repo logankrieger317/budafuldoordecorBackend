@@ -1,11 +1,5 @@
-import { Model, ModelStatic, WhereOptions, Op, FindOptions } from 'sequelize';
-import {
-  RibbonProduct,
-  MumProduct,
-  BraidProduct,
-  WreathProduct,
-  SeasonalProduct,
-} from '../models';
+import { Model, ModelStatic, WhereOptions, Op } from 'sequelize';
+import { RibbonProduct, MumProduct, BraidProduct, WreathProduct, SeasonalProduct } from '../models';
 
 type ProductType = 'ribbon' | 'mum' | 'braid' | 'wreath' | 'seasonal';
 
