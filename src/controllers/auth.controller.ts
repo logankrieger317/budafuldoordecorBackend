@@ -65,10 +65,9 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password, // Let the model's beforeSave hook handle hashing
       firstName,
       lastName,
       phone,
