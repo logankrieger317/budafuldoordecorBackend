@@ -9,8 +9,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email, passwordLength: password?.length });
-    
     // Make email search case-insensitive
     const user = await User.findOne({ 
       where: { 
@@ -21,14 +19,10 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     });
 
     if (!user) {
-      console.log('User not found for email:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    console.log('User found:', { id: user.id, email: user.email, hashedPasswordPrefix: user.password?.substring(0, 10) });
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log('Password validation result:', isPasswordValid);
-    
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -58,7 +52,6 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
-    console.log('Registration attempt:', { email, passwordLength: password?.length });
 
     // Make email check case-insensitive
     const existingUser = await User.findOne({ 
@@ -72,7 +65,6 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    console.log('Creating user with password:', password);
     const user = await User.create({
       email,
       password, // Let the model's beforeSave hook handle hashing
@@ -81,7 +73,6 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       phone,
       isAdmin: false // New users are not admins by default
     });
-    console.log('User created with hashed password:', user.password?.substring(0, 10));
 
     const token = jwt.sign(
       { id: user.id },
