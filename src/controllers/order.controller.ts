@@ -14,7 +14,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       customerName,
       shippingAddress,
       billingAddress,
-      totalAmount
+      totalAmount,
+      phone,
+      notes
     } = req.body;
 
     const order = await Order.create({
@@ -23,7 +25,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       customerName,
       shippingAddress,
       billingAddress,
-      totalAmount,
+      totalAmount: parseFloat(totalAmount),
+      phone,
+      notes,
       status: 'pending',
       paymentStatus: 'pending'
     }, { transaction: t });
@@ -32,9 +36,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       items.map((item: any) =>
         OrderItem.create({
           orderId: order.id,
-          productSku: item.productId,
+          productSku: item.productSku || item.productId,
           quantity: item.quantity,
-          priceAtTime: item.price
+          priceAtTime: parseFloat(item.price)
         }, { transaction: t })
       )
     );

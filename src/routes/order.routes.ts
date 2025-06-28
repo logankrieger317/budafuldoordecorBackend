@@ -14,16 +14,16 @@ const router = Router();
 
 // Order validation schema
 const orderValidation = [
-  body('userId').isUUID().withMessage('Valid user ID is required'),
+  body('userId').optional().isUUID().withMessage('Valid user ID is required'),
   body('items').isArray().withMessage('Items must be an array'),
-  body('items.*.productId').isUUID().withMessage('Valid product ID is required'),
+  body('items.*.productSku').notEmpty().withMessage('Product SKU is required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('items.*.price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('items.*.price').isNumeric().withMessage('Price must be a number'),
   body('customerEmail').isEmail().withMessage('Valid email is required'),
   body('customerName').notEmpty().withMessage('Customer name is required'),
   body('shippingAddress').notEmpty().withMessage('Shipping address is required'),
   body('billingAddress').notEmpty().withMessage('Billing address is required'),
-  body('totalAmount').isFloat({ min: 0 }).withMessage('Total amount must be a positive number')
+  body('totalAmount').isNumeric().withMessage('Total amount must be a number')
 ];
 
 const guestOrderValidation = [
