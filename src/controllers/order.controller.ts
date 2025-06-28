@@ -53,6 +53,61 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+export const createGuestOrder = async (req: Request, res: Response): Promise<void> => {
+  const t = await sequelize.transaction();
+
+  try {
+    const {
+      items,
+      customerEmail,
+      customerName,
+      shippingAddress,
+      billingAddress,
+      totalAmount,
+      phone,
+      notes
+    } = req.body;
+
+    const order = await Order.create({
+      customerEmail,
+      customerName,
+      shippingAddress,
+      billingAddress,
+      totalAmount: parseFloat(totalAmount),
+      phone,
+      notes,
+      status: 'pending',
+      paymentStatus: 'pending'
+    }, { transaction: t });
+
+    await Promise.all(
+      items.map((item: any) =>
+        OrderItem.create({
+          orderId: order.id,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          priceAtTime: parseFloat(item.price)
+        }, { transaction: t })
+      )
+    );
+
+    await t.commit();
+    
+    const createdOrder = await Order.findByPk(order.id, {
+      include: [{ model: OrderItem, as: 'items' }]
+    });
+    
+    res.status(201).json({
+      status: 'success',
+      data: { order: createdOrder }
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error creating guest order:', error);
+    throw new AppError(`Error creating guest order: ${error}`, 500);
+  }
+};
+
 export const getOrderById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
