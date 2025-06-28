@@ -9,7 +9,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
+    // Make email search case-insensitive
+    const user = await User.findOne({ 
+      where: { 
+        email: { 
+          [require('sequelize').Op.iLike]: email 
+        } 
+      } 
+    });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -46,7 +53,14 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { email, password, firstName, lastName, phone } = req.body;
 
-    const existingUser = await User.findOne({ where: { email } });
+    // Make email check case-insensitive
+    const existingUser = await User.findOne({ 
+      where: { 
+        email: { 
+          [require('sequelize').Op.iLike]: email 
+        } 
+      } 
+    });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
